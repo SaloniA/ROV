@@ -118,9 +118,16 @@ int inputSpeed = 255, maxSpeed = 1715, minSpeed = 1205, testSpeed = 1590, maxSpe
 int speedL = deadValue, speedR = deadValue;
 int counter = 0, top = 0, bottom = 0;
 double fcounter = 0;
+byte USaddr = 0;
+boolean error1 = 0;  //Create a bit to check for catch errors as needed.
+int dist;
 
 ///////////////////////////////PS2/////////////////////////////////
 
+//ULTRASONIC
+const int pwPin1 = 6;
+long USsensor, mm, inches;
+//ULTRASONIC
 
 void setup()
 {
@@ -149,18 +156,6 @@ void setup()
 
     // Start by performing self test and reporting values
     myIMU.MPU9250SelfTest(myIMU.SelfTest);
-//    Serial.print("x-axis self test: acceleration trim within : ");
-//    Serial.print(myIMU.SelfTest[0],1); Serial.println("% of factory value");
-//    Serial.print("y-axis self test: acceleration trim within : ");
-//    Serial.print(myIMU.SelfTest[1],1); Serial.println("% of factory value");
-//    Serial.print("z-axis self test: acceleration trim within : ");
-//    Serial.print(myIMU.SelfTest[2],1); Serial.println("% of factory value");
-//    Serial.print("x-axis self test: gyration trim within : ");
-//    Serial.print(myIMU.SelfTest[3],1); Serial.println("% of factory value");
-//    Serial.print("y-axis self test: gyration trim within : ");
-//    Serial.print(myIMU.SelfTest[4],1); Serial.println("% of factory value");
-//    Serial.print("z-axis self test: gyration trim within : ");
-//    Serial.print(myIMU.SelfTest[5],1); Serial.println("% of factory value");
 
     // Calibrate gyro and accelerometers, load biases in bias registers
     myIMU.calibrateMPU9250(myIMU.gyroBias, myIMU.accelBias);
@@ -198,13 +193,13 @@ void setup()
     }
     if (SerialDebug)
     {
-      //  Serial.println("Calibration values: ");
-//      Serial.print("X-Axis sensitivity adjustment value ");
-//      Serial.println(myIMU.magCalibration[0], 2);
-//      Serial.print("Y-Axis sensitivity adjustment value ");
-//      Serial.println(myIMU.magCalibration[1], 2);
-//      Serial.print("Z-Axis sensitivity adjustment value ");
-//      Serial.println(myIMU.magCalibration[2], 2);
+      Serial.println("Calibration values: ");
+      Serial.print("X-Axis sensitivity adjustment value ");
+      Serial.println(myIMU.magCalibration[0], 2);
+      Serial.print("Y-Axis sensitivity adjustment value ");
+      Serial.println(myIMU.magCalibration[1], 2);
+      Serial.print("Z-Axis sensitivity adjustment value ");
+      Serial.println(myIMU.magCalibration[2], 2);
     }
 
   }
@@ -216,12 +211,6 @@ void setup()
   }
 
   ////////////////PS2////////////////////////////////////////
-
-    //Begin serial communications
-  //Setting up motors with their minimum and maximum us values
-//  motorPort.attach(motorPortPin, minValue, maxValue);
-//  motorStarboard.attach(motorStarboardPin, minValue, maxValue);
-//  motorVertical.attach(motorVerticalPin, minValue, maxValue);
 
   motorLeft.attach(motorLeftPin, minValue, maxValue);
   motorRight.attach(motorRightPin, minValue, maxValue);
@@ -239,13 +228,13 @@ void setup()
   error = ps2x.config_gamepad(10, 11, 12, 13, false, false);
 
   //If you experience issues with the port motor value always being set to 0 despite the stick position, activate this code
-  /*
+  
     leftStickY = ps2x.Analog(PSS_LY);
     if (leftStickY == 0){
     error = 1;
     Serial.println("Controller thinks analog stick is off centre, restart program");
     }
-  */
+  
 
   if (error == 0) {
     Serial.println("Found Controller, configured successful");
@@ -284,12 +273,17 @@ void setup()
     
     pressure_baseline = sensor.getPressure(ADC_4096);
   ////////////////////////////PRESSURE SENSOR////////////////
-
-  delay(60000);
+  
+  // ULTRASONIC
+  pinMode(pwPin1, INPUT);
+  //ULTRASONIC
 }
 
 void loop()
 {
+  read_sensor();
+  print_range();
+  
   // If intPin goes high, all data registers have new data
   // On interrupt, check if data ready interrupt
   if (myIMU.readByte(MPU9250_ADDRESS, INT_STATUS) & 0x01)
@@ -426,45 +420,47 @@ void loop()
   // Read pressure from the sensor in mbar.
   pressure_abs = sensor.getPressure(ADC_4096);
   
-  // Let's do something interesting with our data.
-  
-  // Convert abs pressure with the help of altitude into relative pressure
-  // This is used in Weather stations.
   pressure_relative = sealevel(pressure_abs, base_altitude);
-  
-  // Taking our baseline pressure at the beginning we can find an approximate
-  // change in altitude based on the differences in pressure.   
   altitude_delta = altitude(pressure_abs , pressure_baseline);
   
-  // Report values via UART
-  
-//  Serial.print("Pressure abs (mbar)= ");
-  Serial.print(pressure_abs);
-  Serial.print(" ");
-   
-//  Serial.print("Pressure relative (mbar)= ");
-  Serial.print(pressure_relative); 
-  Serial.print(" ");
-  
-//  Serial.print("Altitude change (m) = ");
-  Serial.println(altitude_delta); 
-
-    delay(3000);
-    Serial.println("done waiting");
-    EEPROM.put(counter, altitude_delta);
-     counter+=sizeof(double);
-     fcounter = altitude_delta;
-     EEPROM.put(counter, fcounter); 
-     Serial.print(altitude_delta);
-     Serial.print(" ");
-     Serial.println(fcounter);
-     motorDown.writeMicroseconds(minSpeed50);
-     delay(1000);
-     motorDown.writeMicroseconds(deadValue);
-     //delay(3000);
+//  // Report values via UART
+//  
+////  Serial.print("Pressure abs (mbar)= ");
+//  Serial.print(pressure_abs);
+//  Serial.print(" ");
+//   
+////  Serial.print("Pressure relative (mbar)= ");
+//  Serial.print(pressure_relative); 
+//  Serial.print(" ");
+//  
+////  Serial.print("Altitude change (m) = ");
+//  Serial.println(altitude_delta); 
+//
+//    delay(3000);
+//    Serial.println("done waiting");
+//    EEPROM.put(counter, altitude_delta);
+//     counter+=sizeof(double);
+//     fcounter = altitude_delta;
+//     EEPROM.put(counter, fcounter); 
+//     Serial.print(altitude_delta);
+//     Serial.print(" ");
+//     Serial.println(fcounter);
+//     motorDown.writeMicroseconds(minSpeed50);
+//     delay(1000);
+//     motorDown.writeMicroseconds(deadValue);
+//     //delay(3000);
  
 
 ///////////////////////////////////PRESSURE SENSOR/////////////////////////
+
+///////////////////////////////US  
+//  //Take a range reading 
+//  if (!error1){                  //If you had an error starting the sensor there is little point in reading it as you will get old data.
+//    delay(100);
+//    dist = read_sensor(USaddr);   //reading the sensor will return an integer value -- if this value is 0 there was an error
+//    Serial.print("D:");Serial.println(dist);
+//  }
+///////////////////////////////US
 
   ///////////////////////////////////////PS2////////////////////////////////
   
@@ -475,19 +471,6 @@ void loop()
 
     ps2x.read_gamepad(false, vibrate);//Read controller and setup vibration
 
-    motorLeft.writeMicroseconds(deadValue);
-    motorRight.writeMicroseconds(deadValue);
-//
-//    Serial.print(ps2x.Analog(PSS_RX));
-//    Serial.print(" ");
-//    
-//    Serial.print(ps2x.Analog(PSS_RY));
-//    Serial.print(" ");
-//    
-//    Serial.print(ps2x.Analog(PSS_LX));
-//    Serial.print(" "); 
-//    
-//    Serial.println(ps2x.Analog(PSS_LY));
     int analogRY = 128 - ps2x.Analog(PSS_RY); 
     int analogRX = ps2x.Analog(PSS_RX) - 128; 
     int analogLY = 128 - ps2x.Analog(PSS_LY); 
@@ -495,41 +478,28 @@ void loop()
     int rR = sqrt(pow(analogRY, 2) + pow(analogRX, 2))-18;
     int rL = sqrt(pow(analogLY, 2) + pow(analogLX, 2)) - 18;   
     
-    //Forwards
-    if (ps2x.Button(PSB_PAD_UP)) {
-      motorLeft.writeMicroseconds(minSpeed50);
-      motorRight.writeMicroseconds(maxSpeed50);
-    } 
-
-    if (ps2x.ButtonReleased(PSB_PAD_UP)) {
-      motorLeft.writeMicroseconds(deadValue);
-      motorRight.writeMicroseconds(deadValue);
-    }
-
-    
-    //Forwards MAX
-    if (ps2x.Button(PSB_L2)) {
-      motorLeft.writeMicroseconds(minSpeed);
-      motorRight.writeMicroseconds(maxSpeed);
-    } 
-
-    if (ps2x.ButtonReleased(PSB_L2)) {
-      motorLeft.writeMicroseconds(deadValue);
-      motorRight.writeMicroseconds(deadValue);
-    }
+    Serial.print(analogLY);
+    Serial.print(" ");
+    Serial.print(analogLX);
+    Serial.print(" ");
+    Serial.print(analogRY);
+    Serial.print(" ");
+    Serial.println(analogRX);
 
     // UP 
     if (analogLY > 18) {
-        int speed = (((maxSpeed75 - deadValue)/(128-18))*analogRY) + deadValue;
-      motorDown.writeMicroseconds(speed);
-      motorUp.writeMicroseconds(speed);
+      int speed = (((maxSpeed75 - deadValue)/(128-18))*analogRY) + deadValue;
+      moveY(speed, speed);
     }
 
     //DOWN
-    if (analogLY < -18) {
-        int speed = (((deadValue - minSpeed75)/(128-18))*analogRY) + deadValue;
-      motorDown.writeMicroseconds(speed);
-      motorUp.writeMicroseconds(speed);
+    else if (analogLY < -18) {
+      int speed = (((deadValue - minSpeed75)/(128-18))*analogRY) + deadValue;
+      moveY(speed, speed);
+    }
+
+    else {
+      moveY(deadValue, deadValue);
     }
 
     if (rR > 0) {
@@ -591,12 +561,10 @@ void loop()
        }
     }
     else {
-      speedL = deadValue;
-      speedR = deadValue;
+      moveX(deadValue, deadValue);
     }
 
-    motorLeft.writeMicroseconds(speedL);
-    motorRight.writeMicroseconds(speedR);
+    
     
 //    Serial.print(rR);
 //    Serial.print(" ");
@@ -613,76 +581,22 @@ void loop()
 //    Serial.println(speedR-deadValue);
     
 
-    //Backwards 
-    if (ps2x.Button(PSB_PAD_DOWN)) {
-      motorLeft.writeMicroseconds(maxSpeed50);
-      motorRight.writeMicroseconds(minSpeed50);
-    } 
-
-    if (ps2x.ButtonReleased(PSB_PAD_DOWN)) {
-      motorLeft.writeMicroseconds(deadValue);
-      motorRight.writeMicroseconds(deadValue);
-    }
-     //Up
-    if (ps2x.Button(PSB_L1)) {
-      motorDown.writeMicroseconds(minSpeed50);
-      motorUp.writeMicroseconds(minSpeed50);
-      // Are the up and down propellers going in the same direction?
-    } 
-
-    if (ps2x.ButtonReleased(PSB_L1)) {
-      motorDown.writeMicroseconds(deadValue);
-      motorUp.writeMicroseconds(deadValue);
-    }
-
-    //Down
-    if (ps2x.Button(PSB_R1)) {
-      motorDown.writeMicroseconds(maxSpeed50);
-      motorUp.writeMicroseconds(maxSpeed50);
-      // Are the up and down propellers going in the same direction? 
-    } 
-
-    if (ps2x.ButtonReleased(PSB_R1)) {
-      motorDown.writeMicroseconds(deadValue);
-      motorUp.writeMicroseconds(deadValue);
-    }
-
-    //Left
-    if (ps2x.Button(PSB_PAD_LEFT)) {
-      motorRight.writeMicroseconds(maxSpeed50);
-    } 
-
-    if (ps2x.ButtonReleased(PSB_PAD_LEFT)) {
-      motorRight.writeMicroseconds(deadValue);
-    }
-
-    //Right
-    if (ps2x.Button(PSB_PAD_RIGHT)) {
-      motorLeft.writeMicroseconds(minSpeed50);
-    } 
-
-    if (ps2x.ButtonReleased(PSB_PAD_RIGHT)) {
-      motorLeft.writeMicroseconds(deadValue);
-    }
-
     //IMU Control
     if (ps2x.Button(PSB_R2)) {
       // set north to 30-33
       if (FilteredYaw < 20){
         motorRight.writeMicroseconds(maxSpeed50);
-//        delay(50);
-//        motorRight.writeMicroseconds(deadValue);
       }
       else if (FilteredYaw > 30) { //This was left
         motorRight.writeMicroseconds(maxSpeed50);
-//        delay(50);
-//        motorRight.writeMicroseconds(deadValue);
       }
 
       else {
+        motorRight.writeMicroseconds(minSpeed50);
+        motorLeft.writeMicroseconds(minSpeed50);
+        delay(1000);
         motorRight.writeMicroseconds(deadValue);
         motorLeft.writeMicroseconds(deadValue);
-//        delay(50);
       }
     }
 
@@ -694,53 +608,21 @@ void loop()
     // Pressure sensor
 
     if(ps2x.Button(PSB_TRIANGLE)) {
-      delay(3000);
-      EEPROM.write(counter, altitude_delta);
+      EEPROM.put(counter, pressure_abs);
     }
 
     if (ps2x.ButtonReleased(PSB_TRIANGLE)) {
       counter++;
     }
 
-    if (ps2x.Button(PSB_CIRCLE)) {
-      for (int j = 0; j < EEPROM.length(); j++){
-        Serial.println(EEPROM.read(j));
-        if (j == 0) {
-          top = EEPROM.read(j);
-        }
-        if (j==1) {
-          bottom = EEPROM.read (j);
-        }
-        
-      }
+    if(ps2x.Button(PSB_SQUARE)) {
+      
+      EEPROM.put(counter, inches);
     }
-
-    if (ps2x.Button(PSB_SQUARE)) {
-        if (altitude_delta > (top - 1000)) { //DOWN
-            motorDown.writeMicroseconds(maxSpeed50);
-            motorUp.writeMicroseconds(maxSpeed50);
-        }
-
-        else if (altitude_delta < (bottom + 1000)) { //UP
-            motorDown.writeMicroseconds(minSpeed50);
-            motorUp.writeMicroseconds(minSpeed50);
-        }
-    }
+    
     if (ps2x.ButtonReleased(PSB_SQUARE)) {
-            motorDown.writeMicroseconds(deadValue);
-            motorUp.writeMicroseconds(deadValue); 
+            counter++; 
     }
-
-
-//    if (altitude_delta > (top - 1000)) { //DOWN
-//        motorDown.writeMicroseconds(maxSpeed50);
-//        motorUp.writeMicroseconds(maxSpeed50);
-//    }
-//
-//    else if (altitude_delta < (bottom + 1000)) { //UP
-//        motorDown.writeMicroseconds(minSpeed50);
-//        motorUp.writeMicroseconds(minSpeed50);
-//    }
 
   }
 
@@ -816,3 +698,26 @@ void magcalMPU9250(float * dest1, float * dest2)
   
    Serial.println("Mag Calibration done!");
  }
+
+void read_sensor (){
+  USsensor = pulseIn(pwPin1, HIGH);
+  mm = USsensor/5.8;
+  inches = mm/25.4;
+}
+ 
+void print_range(){
+  //Serial.print("S1 = ");
+  //Serial.print(mm);
+  //Serial.print(" ");
+  //Serial.println(inches);
+}
+ 
+void moveY(int speedU, int speedD){
+     motorUp.writeMicroseconds(speedU);
+     motorDown.writeMicroseconds(speedD);
+}
+ 
+void moveX(int speedL, int speedR){
+     motorLeft.writeMicroseconds(speedL);
+     motorRight.writeMicroseconds(speedR);  
+}
