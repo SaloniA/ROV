@@ -48,6 +48,7 @@ int EEsize = 4096;
 
 #define AHRS true         // Set to false for basic data read
 #define SerialDebug true  // Set to true to get Serial output for debugging
+#define MAG_CALIBRATION false //Set to true to calibrate the mag sensor
 
 // Pin definitions
 int intPin = 12;  // These can be changed, 2 and 3 are the Arduinos ext int pins
@@ -140,6 +141,10 @@ void setup()
 
   if (c == 0x71) // WHO_AM_I should always be 0x68
   {
+    myIMU.getAres();
+    myIMU.getGres();
+    myIMU.getMres();
+    
     Serial.println("MPU9250 is online...");
 
     // Start by performing self test and reporting values
@@ -175,6 +180,22 @@ void setup()
     myIMU.initAK8963(myIMU.magCalibration);
     // Initialize device for active mode read of magnetometer
 //    Serial.println("AK8963 initialized for active data mode....");
+    if (MAG_CALIBRATION) {
+      magcalMPU9250(myIMU.magBias, myIMU.magScale);
+      Serial.println("AK8963 mag biases (mG)"); Serial.println(myIMU.magBias[0]); Serial.println(myIMU.magBias[1]); Serial.println(myIMU.magBias[2]); 
+      Serial.println("AK8963 mag scale (mG)"); Serial.println(myIMU.magScale[0]); Serial.println(myIMU.magScale[1]); Serial.println(myIMU.magScale[2]); 
+      delay(2000); // add delay to see results before serial spew of data
+    }
+    else {
+      //Values from previous calibration
+      myIMU.magBias[0] = -61.73;
+      myIMU.magBias[1] = 1260.07;
+      myIMU.magBias[2] = -1726.72;
+
+      myIMU.magScale[0] = 1.25;
+      myIMU.magScale[1] = 1.32;
+      myIMU.magScale[2] = 0.69;
+    }
     if (SerialDebug)
     {
       //  Serial.println("Calibration values: ");
@@ -186,7 +207,7 @@ void setup()
 //      Serial.println(myIMU.magCalibration[2], 2);
     }
 
-  } // if (c == 0x71)
+  }
   else
   {
     Serial.print("Could not connect to MPU9250: 0x");
@@ -274,7 +295,6 @@ void loop()
   if (myIMU.readByte(MPU9250_ADDRESS, INT_STATUS) & 0x01)
   {  
     myIMU.readAccelData(myIMU.accelCount);  // Read the x/y/z adc values
-    myIMU.getAres();
 
     // Now we'll calculate the accleration value into actual g's
     // This depends on scale being set
@@ -283,7 +303,6 @@ void loop()
     myIMU.az = (float)myIMU.accelCount[2]*myIMU.aRes; // - accelBias[2];
 
     myIMU.readGyroData(myIMU.gyroCount);  // Read the x/y/z adc values
-    myIMU.getGres();
 
     // Calculate the gyro value into actual degrees per second
     // This depends on scale being set
@@ -292,25 +311,17 @@ void loop()
     myIMU.gz = (float)myIMU.gyroCount[2]*myIMU.gRes;
 
     myIMU.readMagData(myIMU.magCount);  // Read the x/y/z adc values
-    myIMU.getMres();
-    // User environmental x-axis correction in milliGauss, should be
-    // automatically calculated
-    myIMU.magbias[0] = +470.;
-    // User environmental x-axis correction in milliGauss TODO axis??
-    myIMU.magbias[1] = +120.;
-    // User environmental x-axis correction in milliGauss
-    myIMU.magbias[2] = +125.;
 
     // Calculate the magnetometer values in milliGauss
     // Include factory calibration per data sheet and user environmental
     // corrections
     // Get actual magnetometer value, this depends on scale being set
     myIMU.mx = (float)myIMU.magCount[0]*myIMU.mRes*myIMU.magCalibration[0] -
-               myIMU.magbias[0];
+               myIMU.magBias[0];
     myIMU.my = (float)myIMU.magCount[1]*myIMU.mRes*myIMU.magCalibration[1] -
-               myIMU.magbias[1];
+               myIMU.magBias[1];
     myIMU.mz = (float)myIMU.magCount[2]*myIMU.mRes*myIMU.magCalibration[2] -
-               myIMU.magbias[2];
+               myIMU.magBias[2];
   } // if (readByte(MPU9250_ADDRESS, INT_STATUS) & 0x01)
 
   // Must be called before updating quaternions!
@@ -757,3 +768,51 @@ double altitude(double P, double P0)
 {
   return(44330.0*(1-pow(P/P0,1/5.255)));
 }
+
+//CALIBRATION
+void magcalMPU9250(float * dest1, float * dest2) 
+ {
+   uint16_t ii = 0, sample_count = 0;
+   int32_t mag_bias[3] = {0, 0, 0}, mag_scale[3] = {0, 0, 0};
+   int16_t mag_max[3] = {-32767, -32767, -32767}, mag_min[3] = {32767, 32767, 32767}, mag_temp[3] = {0, 0, 0};
+  
+   Serial.println("Mag Calibration: Wave device in a figure eight until done!");
+   delay(4000);
+  
+  // shoot for ~fifteen seconds of mag data
+  /*if(myIMU.Mmode == 0x02)*/ sample_count = 128;  // at 8 Hz ODR, new mag data is available every 125 ms
+  //if(myIMU.Mmode == 0x06) sample_count = 1500;  // at 100 Hz ODR, new mag data is available every 10 ms
+  for(ii = 0; ii < sample_count; ii++) {
+    myIMU.readMagData(mag_temp);  // Read the mag data   
+    for (int jj = 0; jj < 3; jj++) {
+      if(mag_temp[jj] > mag_max[jj]) mag_max[jj] = mag_temp[jj];
+      if(mag_temp[jj] < mag_min[jj]) mag_min[jj] = mag_temp[jj];
+    }
+    /*if(myIMU.Mmode == 0x02)*/ delay(135);  // at 8 Hz ODR, new mag data is available every 125 ms
+    //if(myIMU.Mmode == 0x06) delay(12);  // at 100 Hz ODR, new mag data is available every 10 ms
+  }
+  
+  
+  // Get hard iron correction
+   mag_bias[0]  = (mag_max[0] + mag_min[0])/2;  // get average x mag bias in counts
+   mag_bias[1]  = (mag_max[1] + mag_min[1])/2;  // get average y mag bias in counts
+   mag_bias[2]  = (mag_max[2] + mag_min[2])/2;  // get average z mag bias in counts
+  
+   dest1[0] = (float) mag_bias[0]*myIMU.mRes*myIMU.magCalibration[0];  // save mag biases in G for main program
+   dest1[1] = (float) mag_bias[1]*myIMU.mRes*myIMU.magCalibration[1];   
+   dest1[2] = (float) mag_bias[2]*myIMU.mRes*myIMU.magCalibration[2];  
+     
+  // Get soft iron correction estimate
+   mag_scale[0]  = (mag_max[0] - mag_min[0])/2;  // get average x axis max chord length in counts
+   mag_scale[1]  = (mag_max[1] - mag_min[1])/2;  // get average y axis max chord length in counts
+   mag_scale[2]  = (mag_max[2] - mag_min[2])/2;  // get average z axis max chord length in counts
+  
+   float avg_rad = mag_scale[0] + mag_scale[1] + mag_scale[2];
+   avg_rad /= 3.0;
+  
+   dest2[0] = avg_rad/((float)mag_scale[0]);
+   dest2[1] = avg_rad/((float)mag_scale[1]);
+   dest2[2] = avg_rad/((float)mag_scale[2]);
+  
+   Serial.println("Mag Calibration done!");
+ }
