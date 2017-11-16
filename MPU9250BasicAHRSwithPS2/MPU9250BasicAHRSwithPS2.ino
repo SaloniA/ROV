@@ -561,9 +561,12 @@ void loop()
        }
     }
     else {
-      moveX(deadValue, deadValue);
+      speedL = deadValue;
+      speedR = deadValue;
     }
 
+    moveX(speedL,speedR);
+    
     
     
 //    Serial.print(rR);
