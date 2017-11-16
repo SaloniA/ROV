@@ -13,7 +13,7 @@ void setup() {
 }
 
 void loop() {
-  for (int j = 0; j < 40; j++){
+  for (int j = 0; j < 500; j++){
         //EECON1bits.CFGS=0;
         EEPROM.get(addr, out);
         Serial.println(out);
