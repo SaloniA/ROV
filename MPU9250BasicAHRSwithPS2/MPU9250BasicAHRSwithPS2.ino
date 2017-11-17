@@ -475,94 +475,86 @@ void loop()
     int analogRX = ps2x.Analog(PSS_RX) - 128; 
     int analogLY = 128 - ps2x.Analog(PSS_LY); 
     int analogLX = ps2x.Analog(PSS_LX) - 128; //NOT USED!!!!
-    int rR = sqrt(pow(analogRY, 2) + pow(analogRX, 2))-18;
-    int rL = sqrt(pow(analogLY, 2) + pow(analogLX, 2)) - 18;   
+    int rR = sqrt(pow(analogRY, 2) + pow(analogRX, 2));
+    int rL = sqrt(pow(analogLY, 2) + pow(analogLX, 2));   
     
-    Serial.print(analogLY);
-    Serial.print(" ");
-    Serial.print(analogLX);
-    Serial.print(" ");
-    Serial.print(analogRY);
-    Serial.print(" ");
-    Serial.println(analogRX);
+//    Serial.print(analogLY);
+//    Serial.print(" ");
+//    Serial.print(analogLX);
+//    Serial.print(" ");
+//    Serial.print(analogRY);
+//    Serial.print(" ");
+//    Serial.println(analogRX);
 
     // UP 
     if (analogLY > 18) {
-      int speed = (((maxSpeed75 - deadValue)/(128-18))*analogRY) + deadValue;
-      moveY(speed, speed);
+      int speedM = -75*analogLY/(128-18);
+      moveY(speedM, speedM);
     }
 
     //DOWN
     else if (analogLY < -18) {
-      int speed = (((deadValue - minSpeed75)/(128-18))*analogRY) + deadValue;
-      moveY(speed, speed);
+      int speedM = -75*analogLY/(128-18);
+      moveY(speedM, speedM);
     }
 
     else {
-      moveY(deadValue, deadValue);
+      moveY(0, 0);
     }
 
-    if (rR > 0) {
-      if (analogRY > 0 ) {
-        if (analogRX > -18 && analogRX < 18) {
-          speedL = (((deadValue - minSpeed75)/(128-18))*(analogRY)) + deadValue;
-          speedR = -1*(((deadValue - minSpeed75)/(128-18))*(analogRY)) + deadValue;
-        }
-        else if (analogRX > 18) {
-
-          if (rR - 2*analogRX < 0) {
-            speedL = deadValue;
-            speedR = -1*(((deadValue - minSpeed75)/(128-18))*(rR)) + deadValue;
-          }
-          else {
-            speedL = (((deadValue - minSpeed75)/(128-18))*(rR - 2*analogRX)) + deadValue;
-            speedR = -1*(((deadValue - minSpeed75)/(128-18))*(rR)) + deadValue;
-          }
-        }
-        else {
-          if (rR + 2*analogRX < 0) {
-            speedL = (((deadValue - minSpeed75)/(128-18))*(rR)) + deadValue;
-            speedR = deadValue;
+    if (rR > 18) {
+      if (analogRX > -25 && analogRX < 25) {
+        speedL = 75*analogRY/(128-18);
+        speedR = -75*analogRY/(128-18);
+      }
+      else if (analogRX > 25) {
+        if (rR - analogRX < 0) {
+          if (analogRY > 0 ) {
+            speedL = 0;
+            speedR = -75*rR/(128-18);
           } 
           else {
-            speedL = (((deadValue - minSpeed75)/(128-18))*(rR)) + deadValue;
-            speedR = -1*(((deadValue - minSpeed75)/(128-18))*(rR + 2*analogRX)) + deadValue;
-          }
-        }
-      } 
-      else {
-        if (analogRX > -18 && analogRX < 18) {
-          speedL = (((deadValue - minSpeed75)/(128-18))*(analogRY)) + deadValue;
-          speedR = -1*(((deadValue - minSpeed75)/(128-18))*(analogRY)) + deadValue;
-        }
-        else if (analogRX > 18) {
-          if (-1*rR + 2*analogRX > 0) {
-            speedL = (((deadValue - minSpeed75)/(128-18))*(-1 * rR)) + deadValue;
-            speedR = deadValue;           
-          }
-
-          else {
-            speedL = (((deadValue - minSpeed75)/(128-18))*(-1 * rR)) + deadValue;
-            speedR = -1*(((deadValue - minSpeed75)/(128-18))*(-1*rR + 2*analogRX)) + deadValue;
+            speedL = -75*rR/(128-18);
+            speedR = 0;
           }
         }
         else {
-
-          if (-1 * rR - 2*analogRX > 0) {
-            speedL = deadValue;
-            speedR = -1*(((deadValue - minSpeed75)/(128-18))*(-1 * rR)) + deadValue;
+          if (analogRY > 0 ) {
+            speedL = 75*(rR - analogRX)/(128-18);
+            speedR = -75*rR/(128-18);
           }
-
           else {
-            speedL = (((deadValue - minSpeed75)/(128-18))*(-1 * rR - 2*analogRX)) + deadValue;
-            speedR = -1*(((deadValue - minSpeed75)/(128-18))*(-1 * rR)) + deadValue;
+            speedL = -75*rR/(128-18);
+            speedR = 75*(rR - analogRX)/(128-18);
           }
         }
-       }
+      }
+      else {
+        if (rR + analogRX < 0) {
+          if (analogRY > 0 ) {
+            speedL = 75*rR/(128-18);
+            speedR = 0;
+          }
+          else {
+            speedL = 0;
+            speedR = 75*rR/(128-18);
+          }
+        } 
+        else {
+          if (analogRY > 0 ) {
+            speedL = 75*rR/(128-18);
+            speedR = -75*(rR + analogRX)/(128-18);
+          }
+          else {
+            speedL = -75*(rR + analogRX)/(128-18);
+            speedR = 75*rR/(128-18);
+          }
+        }
+      }
     }
     else {
-      speedL = deadValue;
-      speedR = deadValue;
+      speedL = 0;
+      speedR = 0;
     }
 
     moveX(speedL,speedR);
@@ -609,24 +601,20 @@ void loop()
 //    }
 
 // Test pressure sensor values
-  if (ps2x.Button(PSB_R1) {
+  if (ps2x.Button(PSB_R1)) {
       if (pressure_abs <= 2800){ //Move down
-        motorUp.writeMicroseconds(maxSpeed75);
-        motorDown.writeMicroseconds(maxSpeed75);
+        moveY(-75,-75);
       }
       else if (pressure_abs >= 700000) {
-        motorUp.writeMicroseconds(minSpeed75);
-        motorDown.writeMicroseconds(minSpeed75);
+        moveY(75,75);
       }
       else {
-        motorUp.writeMicroseconds(deadValue);
-        motorDown.writeMicroseconds(deadValue);
+        moveY(0,0);
       }
     }
 
-    if (ps2x.ButtonReleased(PSB_R1) {
-        motorUp.writeMicroseconds(deadValue);
-        motorDown.writeMicroseconds(deadValue);
+    if (ps2x.ButtonReleased(PSB_R1)) {
+        moveY(0,0);
     }
 
     // Pressure sensor
@@ -737,11 +725,15 @@ void print_range(){
 }
  
 void moveY(int speedU, int speedD){
-     motorUp.writeMicroseconds(speedU);
-     motorDown.writeMicroseconds(speedD);
+  int convertedSpeedU = speedU * (maxSpeed-deadValue)/100 + deadValue;
+  int convertedSpeedD = speedD * (maxSpeed-deadValue)/100 + deadValue;
+  motorUp.writeMicroseconds(convertedSpeedU);
+  motorDown.writeMicroseconds(convertedSpeedD);
 }
  
 void moveX(int speedL, int speedR){
-     motorLeft.writeMicroseconds(speedL);
-     motorRight.writeMicroseconds(speedR);  
+  int convertedSpeedL = speedL * (maxSpeed-deadValue)/100 + deadValue;
+  int convertedSpeedR = speedR * (maxSpeed-deadValue)/100 + deadValue;
+     motorLeft.writeMicroseconds(convertedSpeedL);
+     motorRight.writeMicroseconds(convertedSpeedR);  
 }
