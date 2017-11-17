@@ -584,28 +584,49 @@ void loop()
 //    Serial.println(speedR-deadValue);
     
 
-    //IMU Control
-    if (ps2x.Button(PSB_R2)) {
-      // set north to 30-33
-      if (FilteredYaw < 20){
-        motorRight.writeMicroseconds(maxSpeed50);
-      }
-      else if (FilteredYaw > 30) { //This was left
-        motorRight.writeMicroseconds(maxSpeed50);
-      }
+//    //IMU Control
+//    if (ps2x.Button(PSB_R2)) {
+//      // set north to 30-33
+//      if (FilteredYaw < 20){
+//        motorRight.writeMicroseconds(maxSpeed50);
+//      }
+//      else if (FilteredYaw > 30) { //This was left
+//        motorRight.writeMicroseconds(maxSpeed50);
+//      }
+//
+//      else {
+//        motorRight.writeMicroseconds(minSpeed50);
+//        motorLeft.writeMicroseconds(minSpeed50);
+//        delay(1000);
+//        motorRight.writeMicroseconds(deadValue);
+//        motorLeft.writeMicroseconds(deadValue);
+//      }
+//    }
+//
+//    if (ps2x.ButtonReleased(PSB_R2)) {
+//      motorRight.writeMicroseconds(deadValue);
+//      motorLeft.writeMicroseconds(deadValue);
+//    }
 
+// Test pressure sensor values
+  if (ps2x.Button(PSB_R1) {
+      if (pressure_abs <= 2800){ //Move down
+        motorUp.writeMicroseconds(maxSpeed75);
+        motorDown.writeMicroseconds(maxSpeed75);
+      }
+      else if (pressure_abs >= 700000) {
+        motorUp.writeMicroseconds(minSpeed75);
+        motorDown.writeMicroseconds(minSpeed75);
+      }
       else {
-        motorRight.writeMicroseconds(minSpeed50);
-        motorLeft.writeMicroseconds(minSpeed50);
-        delay(1000);
-        motorRight.writeMicroseconds(deadValue);
-        motorLeft.writeMicroseconds(deadValue);
+        motorUp.writeMicroseconds(deadValue);
+        motorDown.writeMicroseconds(deadValue);
       }
     }
 
-    if (ps2x.ButtonReleased(PSB_R2)) {
-      motorRight.writeMicroseconds(deadValue);
-      motorLeft.writeMicroseconds(deadValue);
+    if (ps2x.ButtonReleased(PSB_R1) {
+        motorUp.writeMicroseconds(deadValue);
+        motorDown.writeMicroseconds(deadValue);
     }
 
     // Pressure sensor
