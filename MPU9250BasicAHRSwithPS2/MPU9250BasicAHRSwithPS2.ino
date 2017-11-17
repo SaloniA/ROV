@@ -486,16 +486,17 @@ void loop()
 //    Serial.print(" ");
 //    Serial.println(analogRX);
 
+    int topSpeed = 100;
     // UP 
     if (analogLY > 18) {
-      int speedM = -75*analogLY/(128-18);
-      moveY(speedM, speedM);
+      int speedM = -topSpeed*analogLY/(128-18);
+      moveY(speedM, 0.75*speedM);
     }
 
     //DOWN
     else if (analogLY < -18) {
-      int speedM = -75*analogLY/(128-18);
-      moveY(speedM, speedM);
+      int speedM = -topSpeed*analogLY/(128-18);
+      moveY(speedM, 0.75*speedM);
     }
 
     else {
@@ -504,50 +505,50 @@ void loop()
 
     if (rR > 18) {
       if (analogRX > -25 && analogRX < 25) {
-        speedL = 75*analogRY/(128-18);
-        speedR = -75*analogRY/(128-18);
+        speedL = topSpeed*analogRY/128;
+        speedR = -topSpeed*analogRY/128;
       }
       else if (analogRX > 25) {
         if (rR - analogRX < 0) {
           if (analogRY > 0 ) {
             speedL = 0;
-            speedR = -75*rR/(128-18);
+            speedR = -topSpeed*rR/128;
           } 
           else {
-            speedL = -75*rR/(128-18);
+            speedL = -topSpeed*rR/128;
             speedR = 0;
           }
         }
         else {
           if (analogRY > 0 ) {
-            speedL = 75*(rR - analogRX)/(128-18);
-            speedR = -75*rR/(128-18);
+            speedL = topSpeed*(rR - analogRX)/128;
+            speedR = -topSpeed*rR/128;
           }
           else {
-            speedL = -75*rR/(128-18);
-            speedR = 75*(rR - analogRX)/(128-18);
+            speedL = -topSpeed*rR/128;
+            speedR = topSpeed*(rR - analogRX)/128;
           }
         }
       }
       else {
         if (rR + analogRX < 0) {
           if (analogRY > 0 ) {
-            speedL = 75*rR/(128-18);
+            speedL = topSpeed*rR/128;
             speedR = 0;
           }
           else {
             speedL = 0;
-            speedR = 75*rR/(128-18);
+            speedR = topSpeed*rR/128;
           }
         } 
         else {
           if (analogRY > 0 ) {
-            speedL = 75*rR/(128-18);
-            speedR = -75*(rR + analogRX)/(128-18);
+            speedL = topSpeed*rR/128;
+            speedR = -topSpeed*(rR + analogRX)/128;
           }
           else {
-            speedL = -75*(rR + analogRX)/(128-18);
-            speedR = 75*rR/(128-18);
+            speedL = -topSpeed*(rR + analogRX)/128;
+            speedR = topSpeed*rR/128;
           }
         }
       }
@@ -603,10 +604,10 @@ void loop()
 // Test pressure sensor values
   if (ps2x.Button(PSB_R1)) {
       if (pressure_abs <= 2800){ //Move down
-        moveY(-75,-75);
+        moveY(-100,-75);
       }
       else if (pressure_abs >= 700000) {
-        moveY(75,75);
+        moveY(100,75);
       }
       else {
         moveY(0,0);
