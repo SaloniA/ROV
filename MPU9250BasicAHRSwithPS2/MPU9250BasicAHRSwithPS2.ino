@@ -124,6 +124,7 @@ int dist;
 int speed1 = 0, speed2 = 0, speed3 = 0;
 int state = 0;
 int cSpeed = 0;
+boolean useJoystick = false;
 ///////////////////////////////PS2/////////////////////////////////
 
 //ULTRASONIC
@@ -503,153 +504,160 @@ void loop()
     }
     if (ps2x.ButtonReleased(PSB_PAD_UP)) {
       cSpeed = 0;
-      moveX(0, 0);
+      moveX(cSpeed, cSpeed);
       Serial.println("blh");
     }
 
     //** Move backwards
     if(ps2x.Button(PSB_PAD_DOWN)) {
       if(cSpeed < 100) {
-        cSpeed+=10;
+        cSpeed = 20;
+        cSpeed+=5;
         moveX(-cSpeed, cSpeed);
       }
     }
 
     if (ps2x.ButtonReleased(PSB_PAD_DOWN)) {
       cSpeed = 0;
-      moveX(0, 0);
+      moveX(cSpeed, cSpeed);
     }
 
     //**Turn left
     if(ps2x.Button(PSB_PAD_LEFT)) {
       if(cSpeed < 100) {
-        cSpeed+=10;
+        cSpeed = 20;
+        cSpeed+=5;
         moveX(0, -cSpeed);
       }
     }
 
     if (ps2x.ButtonReleased(PSB_PAD_LEFT)) {
       cSpeed = 0;
-      moveX(0, 0);
+      moveX(cSpeed, cSpeed);
     }
 
     //**Turn right
     if(ps2x.Button(PSB_PAD_RIGHT)) {
       if(cSpeed < 100) {
-        cSpeed+=10;
+        cSpeed = 20;
+        cSpeed+=5;
         moveX(cSpeed, 0);
       }
     }
 
     if (ps2x.ButtonReleased(PSB_PAD_RIGHT)) {
       cSpeed = 0;
-      moveX(0, 0);
+      moveX(cSpeed, cSpeed);
     }
 
     //**Move up
     if(ps2x.Button(PSB_L1)) {
       if(cSpeed < 100) {
-        cSpeed+=10;
+        cSpeed = 20;
+        cSpeed+=5;
         moveY(-cSpeed, -0.75*cSpeed);
       }
     }
     if (ps2x.ButtonReleased(PSB_L1)) {
       cSpeed = 0;
-      moveY(0, 0);
+      moveY(cSpeed, cSpeed);
     }
 
     //**Move down
     if(ps2x.Button(PSB_L2)) {
       if(cSpeed < 100) {
-        cSpeed+=10;
+        cSpeed = 20;
+        cSpeed+=5;
         moveY(cSpeed, 0.75*cSpeed);
       }
     }
     if (ps2x.ButtonReleased(PSB_L2)) {
       cSpeed = 0;
+      moveY(cSpeed, cSpeed);
+    }
+
+    if (useJoystick) {
+    int topSpeed = 100;
+    // UP 
+    if (analogLY > 18) {
+      int speedM = -topSpeed*analogLY/(128-18);
+      moveY(speedM, 0.75*speedM);
+    }
+
+    //DOWN
+    else if (analogLY < -18) {
+      int speedM = -topSpeed*analogLY/(128-18);
+      moveY(speedM, 0.75*speedM);
+    }
+
+    else {
       moveY(0, 0);
     }
 
-//    int topSpeed = 100;
-//    // UP 
-//    if (analogLY > 18) {
-//      int speedM = -topSpeed*analogLY/(128-18);
-//      moveY(speedM, 0.75*speedM);
-//    }
-//
-//    //DOWN
-//    else if (analogLY < -18) {
-//      int speedM = -topSpeed*analogLY/(128-18);
-//      moveY(speedM, 0.75*speedM);
-//    }
-//
-//    else {
-//      moveY(0, 0);
-//    }
-//
-//    //if out of the deadzone
-//    if (rR > 18) {
-//      //forwards and backwards
-//      if (analogRX > -25 && analogRX < 25) {
-//        speedL = topSpeed*analogRY/128;
-//        speedR = -topSpeed*analogRY/128;
-//      }
-//      //if turning right
-//      else if (analogRX > 25) {
-//        //if going forwards
-//        if (analogRY > 0 ) {
-//          //if reached where it would spin the other motor backwards
-//          if (rR - analogRX < 0) {
-//            speedL = topSpeed*rR/128;;
-//            speedR = 0;
-//          } else {
-//            speedL = topSpeed*rR/128;
-//            speedR = -topSpeed*(rR - analogRX)/128;
-//          }
-//          //if going backwards
-//        } else {
-//          //if reached where it would spin the other motor backwards
-//          if (rR - analogRX < 0) {
-//            speedL = -topSpeed*rR/128;
-//            speedR = 0;
-//          } else {
-//            speedL = -topSpeed*rR/128;
-//            speedR = topSpeed*(rR - analogRX)/128;
-//          }
-//        }
-//      }
-//      //if turning left
-//      else {
-//        //going forward
-//        if (analogRY > 0 ) {
-//          //if reached where it would spin the other motor backwards
-//          if (rR + analogRX < 0) {
-//            speedL = 0;
-//            speedR = -topSpeed*rR/128;
-//          } else {
-//            speedL = topSpeed*(rR + analogRX)/128;
-//            speedR = -topSpeed*rR/128;;
-//          }
-//        } 
-//        //going backwards
-//        else {
-//          //if reached where it would spin the other motor backwards
-//          if (rR + analogRX < 0) {
-//            speedL = 0;
-//            speedR = topSpeed*rR/128;
-//          } else {
-//            speedL = -topSpeed*(rR + analogRX)/128;
-//            speedR = topSpeed*rR/128;
-//          }
-//        }
-//      }
-//    }
-//    else {
-//      speedL = 0;
-//      speedR = 0;
-//    }
-//
-//    moveX(speedL,speedR);
+    //if out of the deadzone
+    if (rR > 18) {
+      //forwards and backwards
+      if (analogRX > -25 && analogRX < 25) {
+        speedL = topSpeed*analogRY/128;
+        speedR = -topSpeed*analogRY/128;
+      }
+      //if turning right
+      else if (analogRX > 25) {
+        //if going forwards
+        if (analogRY > 0 ) {
+          //if reached where it would spin the other motor backwards
+          if (rR - analogRX < 0) {
+            speedL = topSpeed*rR/128;;
+            speedR = 0;
+          } else {
+            speedL = topSpeed*rR/128;
+            speedR = -topSpeed*(rR - analogRX)/128;
+          }
+          //if going backwards
+        } else {
+          //if reached where it would spin the other motor backwards
+          if (rR - analogRX < 0) {
+            speedL = -topSpeed*rR/128;
+            speedR = 0;
+          } else {
+            speedL = -topSpeed*rR/128;
+            speedR = topSpeed*(rR - analogRX)/128;
+          }
+        }
+      }
+      //if turning left
+      else {
+        //going forward
+        if (analogRY > 0 ) {
+          //if reached where it would spin the other motor backwards
+          if (rR + analogRX < 0) {
+            speedL = 0;
+            speedR = -topSpeed*rR/128;
+          } else {
+            speedL = topSpeed*(rR + analogRX)/128;
+            speedR = -topSpeed*rR/128;;
+          }
+        } 
+        //going backwards
+        else {
+          //if reached where it would spin the other motor backwards
+          if (rR + analogRX < 0) {
+            speedL = 0;
+            speedR = topSpeed*rR/128;
+          } else {
+            speedL = -topSpeed*(rR + analogRX)/128;
+            speedR = topSpeed*rR/128;
+          }
+        }
+      }
+    }
+    else {
+      speedL = 0;
+      speedR = 0;
+    }
+
+    moveX(speedL,speedR);
+    } 
 
 // Test pressure sensor values
   if (ps2x.Button(PSB_R1)) {
@@ -685,6 +693,10 @@ void loop()
     
     if (ps2x.ButtonReleased(PSB_SQUARE)) {
             counter++; 
+    }
+
+    if (ps2x.Button(PSB_CIRCLE)) {
+      useJoystick = !useJoystick;
     }
 
   }
