@@ -1,27 +1,4 @@
-/* MPU9250 Basic Example Code
- by: Kris Winer
- date: April 1, 2014
- license: Beerware - Use this code however you'd like. If you
- find it useful you can buy me a beer some time.
- Modified by Brent Wilkins July 19, 2016
-
- Demonstrate basic MPU-9250 functionality including parameterizing the register
- addresses, initializing the sensor, getting properly scaled accelerometer,
- gyroscope, and magnetometer data out. Added display functions to allow display
- to on breadboard monitor. Addition of 9 DoF sensor fusion using open source
- Madgwick and Mahony filter algorithms. Sketch runs on the 3.3 V 8 MHz Pro Mini
- and the Teensy 3.1.
-
- SDA and SCL should have external pull-up resistors (to 3.3V).
- 10k resistors are on the EMSENSR-9250 breakout board.
-
- Hardware setup:
- MPU9250 Breakout --------- Arduino
- VDD ---------------------- 3.3V
- VDDI --------------------- 3.3V
- SDA ----------------------- A4
- SCL ----------------------- A5
- GND ---------------------- GND
+/* MTE380 ROV Code
 
  Analog stick values
  RX: 110-145
@@ -31,30 +8,29 @@
  */
 
 #include <AutoPID.h>
-
 #include <PID_v1.h>
-
-#include <EEPROM.h>
-int EEsize = 4096; 
-
+#include <EEPROM.h> 
 #include "quaternionFilters.h"
 #include "MPU9250.h"
-
 #include <Servo.h>
 #include <PS2X_lib.h>
-
 #include <Wire.h>
 #include <SparkFun_MS5803_I2C.h>
+#include <MadgwickAHRS.h>
 
 #define AHRS true         // Set to false for basic data read
 #define SerialDebug true  // Set to true to get Serial output for debugging
 #define MAG_CALIBRATION false //Set to true to calibrate the mag sensor
+
+int EEsize = 4096;
 
 // Pin definitions
 int intPin = 12;  // These can be changed, 2 and 3 are the Arduinos ext int pins
 int myLed  = 13;  // Set up pin 13 led for toggling
 
 MPU9250 myIMU;
+Madgwick IMUFilter;
+
 float FilteredYaw = 0;
 float FilteredPitch = 0;
 float FilteredRoll = 0;
@@ -330,9 +306,9 @@ void loop()
   // modified to allow any convenient orientation convention. This is ok by
   // aircraft orientation standards! Pass gyro rate as rad/s
 //  MadgwickQuaternionUpdate(ax, ay, az, gx*PI/180.0f, gy*PI/180.0f, gz*PI/180.0f,  my,  mx, mz);
-  MahonyQuaternionUpdate(myIMU.ax, myIMU.ay, myIMU.az, myIMU.gx*DEG_TO_RAD,
-                         myIMU.gy*DEG_TO_RAD, myIMU.gz*DEG_TO_RAD, myIMU.my,
-                         myIMU.mx, myIMU.mz, myIMU.deltat);
+//  MahonyQuaternionUpdate(myIMU.ax, myIMU.ay, myIMU.az, myIMU.gx*DEG_TO_RAD,
+//                         myIMU.gy*DEG_TO_RAD, myIMU.gz*DEG_TO_RAD, myIMU.my,
+//                         myIMU.mx, myIMU.mz, myIMU.deltat);
 
   if (!AHRS)
   {
@@ -368,31 +344,33 @@ void loop()
 // For more see
 // http://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles
 // which has additional links.
-      myIMU.yaw   = atan2(2.0f * (*(getQ()+1) * *(getQ()+2) + *getQ() *
-                    *(getQ()+3)), *getQ() * *getQ() + *(getQ()+1) * *(getQ()+1)
-                    - *(getQ()+2) * *(getQ()+2) - *(getQ()+3) * *(getQ()+3));
-      myIMU.pitch = -asin(2.0f * (*(getQ()+1) * *(getQ()+3) - *getQ() *
-                    *(getQ()+2)));
-      myIMU.roll  = atan2(2.0f * (*getQ() * *(getQ()+1) + *(getQ()+2) *
-                    *(getQ()+3)), *getQ() * *getQ() - *(getQ()+1) * *(getQ()+1)
-                    - *(getQ()+2) * *(getQ()+2) + *(getQ()+3) * *(getQ()+3));
-      myIMU.pitch *= RAD_TO_DEG;
-      myIMU.yaw   *= RAD_TO_DEG;
-      // Declination of SparkFun Electronics (40°05'26.6"N 105°11'05.9"W) is
-      // 	8° 30' E  ± 0° 21' (or 8.5°) on 2016-07-19
-      // - http://www.ngdc.noaa.gov/geomag-web/#declination
-      myIMU.yaw   -= 8.5;
-      myIMU.roll  *= RAD_TO_DEG;
+//      myIMU.yaw   = atan2(2.0f * (*(getQ()+1) * *(getQ()+2) + *getQ() *
+//                    *(getQ()+3)), *getQ() * *getQ() + *(getQ()+1) * *(getQ()+1)
+//                    - *(getQ()+2) * *(getQ()+2) - *(getQ()+3) * *(getQ()+3));
+//      myIMU.pitch = -asin(2.0f * (*(getQ()+1) * *(getQ()+3) - *getQ() *
+//                    *(getQ()+2)));
+//      myIMU.roll  = atan2(2.0f * (*getQ() * *(getQ()+1) + *(getQ()+2) *
+//                    *(getQ()+3)), *getQ() * *getQ() - *(getQ()+1) * *(getQ()+1)
+//                    - *(getQ()+2) * *(getQ()+2) + *(getQ()+3) * *(getQ()+3));
+//      myIMU.pitch *= RAD_TO_DEG;
+//      myIMU.yaw   *= RAD_TO_DEG;
+//      // Declination of SparkFun Electronics (40°05'26.6"N 105°11'05.9"W) is
+//      // 	8° 30' E  ± 0° 21' (or 8.5°) on 2016-07-19
+//      // - http://www.ngdc.noaa.gov/geomag-web/#declination
+//      myIMU.yaw   -= 8.5;
+//      myIMU.roll  *= RAD_TO_DEG;
 
-      FilteredYaw = exponentialFilter(0.2, myIMU.yaw, FilteredYaw);
+      IMUFilter.updateIMU(IMUFilter.gx, IMUFilter.gy, IMUFilter.gz, IMUFilter.ax, IMUFilter.ay, IMUFilter.az);
+
+      FilteredYaw = exponentialFilter(0.2, IMUFilter.getYaw(), FilteredYaw);
  ///     Serial.print(FilteredYaw, 2);
  ///     Serial.print(" ");
 
-      FilteredPitch = exponentialFilter(0.2, myIMU.pitch, FilteredPitch);
+      FilteredPitch = exponentialFilter(0.2, IMUFilter.getPitch(), FilteredPitch);
  ///     Serial.print(FilteredPitch, 2);
  ///     Serial.print(" ");
 
-      FilteredRoll = exponentialFilter(0.2, myIMU.roll, FilteredRoll);
+      FilteredRoll = exponentialFilter(0.2, IMUFilter.getRoll(), FilteredRoll);
  ///     Serial.println(FilteredRoll, 2);
    
       myIMU.count = millis();
