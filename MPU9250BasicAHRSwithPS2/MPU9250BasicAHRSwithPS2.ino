@@ -122,6 +122,7 @@ byte USaddr = 0;
 boolean error1 = 0;  //Create a bit to check for catch errors as needed.
 int dist;
 int speed1 = 0, speed2 = 0, speed3 = 0;
+int state = 0;
 ///////////////////////////////PS2/////////////////////////////////
 
 //ULTRASONIC
@@ -656,53 +657,93 @@ void loop()
     
   if (ps2x.ButtonReleased(PSB_START)) {
 
-  if(obstacle1) {
 
-  //AUTOPID
-    if (pressure_abs < 12000000){ //Move to bottom
-      moveY(75, 0.75*75);
-    }
-    moveY(0,0); 
-    if(speed1 < 100) { //Increase forward speed to 100%
-      speed1++;
-      moveX(speed1, -speed1);
-    }
-    delay(2000); //Travel forward under first obstacle
+  switch(state){
 
+    case 1:
+    {
+      //AUTOPID
+      if (pressure_abs < 12000000){ //Move to bottom
+        moveY(75, 0.75*75);
+      }
+      else {
+        moveY(0,0); 
+        state++;
+      }
+    }
+
+    case 2:
+    {
+      if(speed1 < 100) { //Increase forward speed to 100%
+        speed1++;
+        moveX(speed1, -speed1);
+      }
+  
+      else {
+        delay(2000); //Travel forward under first obstacle
+        state++;
+      }
+    }
+    
+
+  case 3:
+  {
    //AUTOPID
     if (pressure_abs > 3000){ //Move to top
       moveY(75, 0.75*75);
     }   
-    moveY(0,0);  
-   
+    else {
+      moveY(0,0); 
+      state++;
+    }
+ 
   }
-  
-  else if(obstacle2) {
+
+  case 4: {
      //IMU!!!!
     moveX(0, -speed1*0.5); // Turn left 90 degrees
     delay(500);
     moveX(speed1, -speed1); //move forward
+    state++;
+  }
+
+    case 5: {
 
     ///USE PID!!!!
     if (mm > 500){ //Until you get to certain distance before wall
       delay(500);
     }
+    else {
+      state++;
+    }
+  }
     
+
+    
+    case 6: {
     //IMU!!!!
     moveX(speed1*0.5, 0); // Turn right 90 degrees
     delay(500);
     moveX(speed1, -speed1); //move forward
     
     delay(3000); //Move forward across table
-    
-  }
-  else if (obstacle3) {
-    //AUTOPID
+    state++;
+    }
+
+    case 7:
+    {
+       //AUTOPID
     if (pressure_abs < 50696.17){ //Move back down to the middle
       moveY(75, 0.75*75);
     }
-    moveY(0,0);
+    else {
+      moveY(0,0);
+      state++;
+    }
 
+    }
+    
+   case 8: {
     // TURN AND AIM FOR MIDDLE OF OBSTACLE
     //IMU!!!!  
     moveX(speed1*0.5, 0); // Turn right 90 degrees
@@ -710,16 +751,25 @@ void loop()
     moveX(speed1, -speed1); //move forward
     
     delay(2000); //Move forward ideally to middle of pool
+    state++;
+   }
+    
 
-    // Repeating sequence: turn left 90 degrees, if US distance is not huge, turn right 90 degrees and move forward a small amount. 
+    case 9: {
+        // Repeating sequence: turn left 90 degrees, if US distance is not huge, turn right 90 degrees and move forward a small amount. 
      //IMU!!!!
     moveX(0, -speed1*0.5); // Turn left 90 degrees
     delay(500);
     moveX(speed1, -speed1); //move forward
+    state++;
+    }
+  
 
-    if (mm > 2000) {// HOLE FOUND!!
+    case 10: {
+      if (mm > 2000) {// HOLE FOUND!!
       delay(3000);
       moveX(0, 0);
+      state++;
     }
     else {
       moveX(speed1*0.5, 0); // Turn right 90 degrees
@@ -730,35 +780,15 @@ void loop()
     delay(500);
     }
 
-    //ATTEMPT 2
-    if (mm > 2000) {// HOLE FOUND!!
-      delay(3000);
-      moveX(0, 0);
-    }
-    else {
-      moveX(speed1*0.5, 0); // Turn right 90 degrees
-    delay(500);
-    moveX(speed1, -speed1); //move forward
-    delay(1000);
-    moveX(0, -speed1*0.5); // Turn left 90 degrees
-    delay(500);
     }
 
-    //ATTEMPT 3
-    if (mm > 2000) {// HOLE FOUND!!
-      delay(3000);
-      moveX(0, 0);
-    }
-    else {
-      moveX(speed1*0.5, 0); // Turn right 90 degrees
-    delay(500);
-    moveX(speed1, -speed1); //move forward
-    delay(1000);
-    moveX(0, -speed1*0.5); // Turn left 90 degrees
-    delay(500);
+    case 11: {
+      // LAND
     }
     
+    
   }
+    
 }
 }
 
