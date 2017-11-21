@@ -182,6 +182,16 @@ void setup()
       Serial.println("AK8963 mag biases (mG)"); Serial.println(myIMU.magBias[0]); Serial.println(myIMU.magBias[1]); Serial.println(myIMU.magBias[2]); 
       Serial.println("AK8963 mag scale (mG)"); Serial.println(myIMU.magScale[0]); Serial.println(myIMU.magScale[1]); Serial.println(myIMU.magScale[2]); 
       delay(2000); // add delay to see results before serial spew of data
+    }if(ps2x.Button(PSB_PAD_UP)) {
+      if(cSpeed < 100) {
+        cSpeed+=5;
+        moveX(cSpeed, -cSpeed);
+      }
+    }
+
+    if (ps2x.ButtonReleased(PSB_PAD_UP)) {
+      cSpeed = 0;
+      moveX(0, 0);
     }
     else {
       //Values from previous calibration
@@ -370,27 +380,23 @@ void loop()
 // For more see
 // http://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles
 // which has additional links.
+      myIMU.yaw   = atan2(2.0f * (*(getQ()+1) * *(getQ()+2) + *getQ() *
+                    *(getQ()+3)), *getQ() * *getQ() + *(getQ()+1) * *(getQ()+1)
+                    - *(getQ()+2) * *(getQ()+2) - *(getQ()+3) * *(getQ()+3));
+      myIMU.pitch = -asin(2.0f * (*(getQ()+1) * *(getQ()+3) - *getQ() *
+                    *(getQ()+2)));
+      myIMU.roll  = atan2(2.0f * (*getQ() * *(getQ()+1) + *(getQ()+2) *
+                    *(getQ()+3)), *getQ() * *getQ() - *(getQ()+1) * *(getQ()+1)
+                    - *(getQ()+2) * *(getQ()+2) + *(getQ()+3) * *(getQ()+3));
+      myIMU.pitch *= RAD_TO_DEG;
+      myIMU.yaw   *= RAD_TO_DEG;
+      // Declination of SparkFun Electronics (40°05'26.6"N 105°11'05.9"W) is
+      // 	8° 30' E  ± 0° 21' (or 8.5°) on 2016-07-19
+      // - http://www.ngdc.noaa.gov/geomag-web/#declination
+      myIMU.yaw   -= 8.5;
+      myIMU.roll  *= RAD_TO_DEG;
 
-//      myIMU.yaw   = atan2(2.0f * (*(getQ()+1) * *(getQ()+2) + *getQ() *
-//                    *(getQ()+3)), *getQ() * *getQ() + *(getQ()+1) * *(getQ()+1)
-//                    - *(getQ()+2) * *(getQ()+2) - *(getQ()+3) * *(getQ()+3));
-//      myIMU.pitch = -asin(2.0f * (*(getQ()+1) * *(getQ()+3) - *getQ() *
-//                    *(getQ()+2)));
-//      myIMU.roll  = atan2(2.0f * (*getQ() * *(getQ()+1) + *(getQ()+2) *
-//                    *(getQ()+3)), *getQ() * *getQ() - *(getQ()+1) * *(getQ()+1)
-//                    - *(getQ()+2) * *(getQ()+2) + *(getQ()+3) * *(getQ()+3));
-//      myIMU.pitch *= RAD_TO_DEG;
-//      myIMU.yaw   *= RAD_TO_DEG;
-//      // Declination of SparkFun Electronics (40°05'26.6"N 105°11'05.9"W) is
-//      // 	8° 30' E  ± 0° 21' (or 8.5°) on 2016-07-19
-//      // - http://www.ngdc.noaa.gov/geomag-web/#declination
-//      myIMU.yaw   -= 8.5;
-//      myIMU.roll  *= RAD_TO_DEG;
-
-      IMUFilter.updateIMU(myIMU.gx, myIMU.gy, myIMU.gz, myIMU.ax, myIMU.ay, myIMU.az);
-
-      FilteredYaw = exponentialFilter(0.2, (IMUFilter.getYaw()-180)*360, FilteredYaw);
-      
+      FilteredYaw = exponentialFilter(0.2, myIMU.yaw, FilteredYaw);
  ///     Serial.print(FilteredYaw, 2);
  ///     Serial.print(" ");
 
@@ -489,13 +495,16 @@ void loop()
     if(ps2x.Button(PSB_PAD_UP)) {
       Serial.println("UP!");
       if(cSpeed < 100) {
-        cSpeed+=10;
+        cSpeed = 20;
+        cSpeed+=5;
         moveX(cSpeed, -cSpeed);
-//      }
+        delay(500);
+      }
     }
     if (ps2x.ButtonReleased(PSB_PAD_UP)) {
       cSpeed = 0;
       moveX(0, 0);
+      Serial.println("blh");
     }
 
     //** Move backwards
@@ -561,86 +570,86 @@ void loop()
       moveY(0, 0);
     }
 
-    int topSpeed = 100;
-    // UP 
-    if (analogLY > 18) {
-      int speedM = -topSpeed*analogLY/(128-18);
-      moveY(speedM, 0.75*speedM);
-    }
-
-    //DOWN
-    else if (analogLY < -18) {
-      int speedM = -topSpeed*analogLY/(128-18);
-      moveY(speedM, 0.75*speedM);
-    }
-
-    else {
-      moveY(0, 0);
-    }
-
-    //if out of the deadzone
-    if (rR > 18) {
-      //forwards and backwards
-      if (analogRX > -25 && analogRX < 25) {
-        speedL = topSpeed*analogRY/128;
-        speedR = -topSpeed*analogRY/128;
-      }
-      //if turning right
-      else if (analogRX > 25) {
-        //if going forwards
-        if (analogRY > 0 ) {
-          //if reached where it would spin the other motor backwards
-          if (rR - analogRX < 0) {
-            speedL = topSpeed*rR/128;;
-            speedR = 0;
-          } else {
-            speedL = topSpeed*rR/128;
-            speedR = -topSpeed*(rR - analogRX)/128;
-          }
-          //if going backwards
-        } else {
-          //if reached where it would spin the other motor backwards
-          if (rR - analogRX < 0) {
-            speedL = -topSpeed*rR/128;
-            speedR = 0;
-          } else {
-            speedL = -topSpeed*rR/128;
-            speedR = topSpeed*(rR - analogRX)/128;
-          }
-        }
-      }
-      //if turning left
-      else {
-        //going forward
-        if (analogRY > 0 ) {
-          //if reached where it would spin the other motor backwards
-          if (rR + analogRX < 0) {
-            speedL = 0;
-            speedR = -topSpeed*rR/128;
-          } else {
-            speedL = topSpeed*(rR + analogRX)/128;
-            speedR = -topSpeed*rR/128;;
-          }
-        } 
-        //going backwards
-        else {
-          //if reached where it would spin the other motor backwards
-          if (rR + analogRX < 0) {
-            speedL = 0;
-            speedR = topSpeed*rR/128;
-          } else {
-            speedL = -topSpeed*(rR + analogRX)/128;
-            speedR = topSpeed*rR/128;
-          }
-        }
-      }
-    }
-    else {
-      speedL = 0;
-      speedR = 0;
-    }
-
-    moveX(speedL,speedR);
+//    int topSpeed = 100;
+//    // UP 
+//    if (analogLY > 18) {
+//      int speedM = -topSpeed*analogLY/(128-18);
+//      moveY(speedM, 0.75*speedM);
+//    }
+//
+//    //DOWN
+//    else if (analogLY < -18) {
+//      int speedM = -topSpeed*analogLY/(128-18);
+//      moveY(speedM, 0.75*speedM);
+//    }
+//
+//    else {
+//      moveY(0, 0);
+//    }
+//
+//    //if out of the deadzone
+//    if (rR > 18) {
+//      //forwards and backwards
+//      if (analogRX > -25 && analogRX < 25) {
+//        speedL = topSpeed*analogRY/128;
+//        speedR = -topSpeed*analogRY/128;
+//      }
+//      //if turning right
+//      else if (analogRX > 25) {
+//        //if going forwards
+//        if (analogRY > 0 ) {
+//          //if reached where it would spin the other motor backwards
+//          if (rR - analogRX < 0) {
+//            speedL = topSpeed*rR/128;;
+//            speedR = 0;
+//          } else {
+//            speedL = topSpeed*rR/128;
+//            speedR = -topSpeed*(rR - analogRX)/128;
+//          }
+//          //if going backwards
+//        } else {
+//          //if reached where it would spin the other motor backwards
+//          if (rR - analogRX < 0) {
+//            speedL = -topSpeed*rR/128;
+//            speedR = 0;
+//          } else {
+//            speedL = -topSpeed*rR/128;
+//            speedR = topSpeed*(rR - analogRX)/128;
+//          }
+//        }
+//      }
+//      //if turning left
+//      else {
+//        //going forward
+//        if (analogRY > 0 ) {
+//          //if reached where it would spin the other motor backwards
+//          if (rR + analogRX < 0) {
+//            speedL = 0;
+//            speedR = -topSpeed*rR/128;
+//          } else {
+//            speedL = topSpeed*(rR + analogRX)/128;
+//            speedR = -topSpeed*rR/128;;
+//          }
+//        } 
+//        //going backwards
+//        else {
+//          //if reached where it would spin the other motor backwards
+//          if (rR + analogRX < 0) {
+//            speedL = 0;
+//            speedR = topSpeed*rR/128;
+//          } else {
+//            speedL = -topSpeed*(rR + analogRX)/128;
+//            speedR = topSpeed*rR/128;
+//          }
+//        }
+//      }
+//    }
+//    else {
+//      speedL = 0;
+//      speedR = 0;
+//    }
+//
+//    moveX(speedL,speedR);
 
 // Test pressure sensor values
   if (ps2x.Button(PSB_R1)) {
@@ -822,8 +831,8 @@ void loop()
     
     
   }
-    
 }
+    
 
 
 
