@@ -363,7 +363,7 @@ void loop()
 
       IMUFilter.updateIMU(myIMU.gx, myIMU.gy, myIMU.gz, myIMU.ax, myIMU.ay, myIMU.az);
 
-      FilteredYaw = exponentialFilter(0.2, (IMUFilter.getYaw()-180)*360, FilteredYaw);
+      FilteredYaw = exponentialFilter(0.1, (IMUFilter.getYaw()-180)*360, FilteredYaw);
  ///     Serial.print(FilteredYaw, 2);
  ///     Serial.print(" ");
 
@@ -627,13 +627,14 @@ void loop()
 
  ///////////////////////////////////////PS2////////////////////////////////
   // delay(1000); ???? pressure sensor, imu
-
-  
-  if(ps2x.Button(PSB_START)) {
-      
-    }
     
   if (ps2x.ButtonReleased(PSB_START)) {
+    if (state != 0) {
+      state = 0;
+    } else {
+      state = 1;
+    }
+  }
 
 
   switch(state){
@@ -659,6 +660,7 @@ void loop()
   
       else {
         delay(2000); //Travel forward under first obstacle
+        moveX(0,0);
         state++;
       }
     }
@@ -692,6 +694,7 @@ void loop()
       delay(500);
     }
     else {
+      moveX(0,0);
       state++;
     }
   }
@@ -705,19 +708,20 @@ void loop()
     moveX(speed1, -speed1); //move forward
     
     delay(3000); //Move forward across table
+    moveX(0,0);
     state++;
     }
 
     case 7:
     {
        //AUTOPID
-    if (pressure_abs < 50696.17){ //Move back down to the middle
-      moveY(75, 0.75*75);
-    }
-    else {
-      moveY(0,0);
-      state++;
-    }
+      if (pressure_abs < 50696.17){ //Move back down to the middle
+        moveY(75, 0.75*75);
+      }
+      else {
+        moveY(0,0);
+        state++;
+      }
 
     }
     
@@ -729,6 +733,7 @@ void loop()
     moveX(speed1, -speed1); //move forward
     
     delay(2000); //Move forward ideally to middle of pool
+    moveX(0,0);
     state++;
    }
     
@@ -736,28 +741,29 @@ void loop()
     case 9: {
         // Repeating sequence: turn left 90 degrees, if US distance is not huge, turn right 90 degrees and move forward a small amount. 
      //IMU!!!!
-    moveX(0, -speed1*0.5); // Turn left 90 degrees
-    delay(500);
-    moveX(speed1, -speed1); //move forward
-    state++;
+      moveX(0, -speed1*0.5); // Turn left 90 degrees
+      delay(500);
+      moveX(0, 0);
+      state++;
     }
   
 
     case 10: {
       if (mm > 2000) {// HOLE FOUND!!
-      delay(3000);
-      moveX(0, 0);
-      state++;
-    }
-    else {
-      moveX(speed1*0.5, 0); // Turn right 90 degrees
-    delay(500);
-    moveX(speed1, -speed1); //move forward
-    delay(1000);
-    moveX(0, -speed1*0.5); // Turn left 90 degrees
-    delay(500);
-    }
-
+        moveX(speed1, -speed1); //move forward
+        delay(3000);
+        moveX(0, 0);
+        state++;
+      }
+      else {
+        moveX(speed1*0.5, 0); // Turn right 90 degrees
+        delay(500);
+        moveX(speed1, -speed1); //move forward
+        delay(1000);
+        moveX(0, -speed1*0.5); // Turn left 90 degrees
+        delay(500);
+        moveX(0, 0);
+      }
     }
 
     case 11: {
@@ -765,7 +771,6 @@ void loop()
     }
     
     
-  }
     
 }
 }
