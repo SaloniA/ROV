@@ -1,4 +1,27 @@
-/* MTE380 ROV Code
+/* MPU9250 Basic Example Code
+ by: Kris Winer
+ date: April 1, 2014
+ license: Beerware - Use this code however you'd like. If you
+ find it useful you can buy me a beer some time.
+ Modified by Brent Wilkins July 19, 2016
+
+ Demonstrate basic MPU-9250 functionality including parameterizing the register
+ addresses, initializing the sensor, getting properly scaled accelerometer,
+ gyroscope, and magnetometer data out. Added display functions to allow display
+ to on breadboard monitor. Addition of 9 DoF sensor fusion using open source
+ Madgwick and Mahony filter algorithms. Sketch runs on the 3.3 V 8 MHz Pro Mini
+ and the Teensy 3.1.
+
+ SDA and SCL should have external pull-up resistors (to 3.3V).
+ 10k resistors are on the EMSENSR-9250 breakout board.
+
+ Hardware setup:
+ MPU9250 Breakout --------- Arduino
+ VDD ---------------------- 3.3V
+ VDDI --------------------- 3.3V
+ SDA ----------------------- A4
+ SCL ----------------------- A5
+ GND ---------------------- GND
 
  Analog stick values
  RX: 110-145
@@ -8,21 +31,24 @@
  */
 #include <MadgwickAHRS.h>
 #include <AutoPID.h>
+
 #include <PID_v1.h>
-#include <EEPROM.h> 
+
+#include <EEPROM.h>
+int EEsize = 4096; 
+
 #include "quaternionFilters.h"
 #include "MPU9250.h"
+
 #include <Servo.h>
 #include <PS2X_lib.h>
+
 #include <Wire.h>
 #include <SparkFun_MS5803_I2C.h>
-#include <MadgwickAHRS.h>
 
 #define AHRS true         // Set to false for basic data read
 #define SerialDebug true  // Set to true to get Serial output for debugging
 #define MAG_CALIBRATION false //Set to true to calibrate the mag sensor
-
-int EEsize = 4096;
 
 // Pin definitions
 int intPin = 12;  // These can be changed, 2 and 3 are the Arduinos ext int pins
@@ -43,7 +69,6 @@ PID PPID(&PInput, &POutput, &PSetpoint, PKp, PKi, PKd, DIRECT);
 //Ultrasonic
 double USSetpoint, USInput, USOutput, USKp=1, USKi=0, USKd=0;
 PID USPID(&USInput, &USOutput, &USSetpoint, USKp, USKi, USKd, DIRECT);
-
 float FilteredYaw = 0;
 float FilteredPitch = 0;
 float FilteredRoll = 0;
@@ -108,6 +133,8 @@ boolean error1 = 0;  //Create a bit to check for catch errors as needed.
 int dist;
 int speed1 = 0, speed2 = 0, speed3 = 0;
 int state = 0;
+int cSpeed = 0;
+boolean useJoystick = false;
 ///////////////////////////////PS2/////////////////////////////////
 
 //ULTRASONIC
@@ -166,6 +193,16 @@ void setup()
       Serial.println("AK8963 mag biases (mG)"); Serial.println(myIMU.magBias[0]); Serial.println(myIMU.magBias[1]); Serial.println(myIMU.magBias[2]); 
       Serial.println("AK8963 mag scale (mG)"); Serial.println(myIMU.magScale[0]); Serial.println(myIMU.magScale[1]); Serial.println(myIMU.magScale[2]); 
       delay(2000); // add delay to see results before serial spew of data
+    }if(ps2x.Button(PSB_PAD_UP)) {
+      if(cSpeed < 100) {
+        cSpeed+=5;
+        moveX(cSpeed, -cSpeed);
+      }
+    }
+
+    if (ps2x.ButtonReleased(PSB_PAD_UP)) {
+      cSpeed = 0;
+      moveX(0, 0);
     }
     else {
       //Values from previous calibration
@@ -325,9 +362,9 @@ void loop()
   // modified to allow any convenient orientation convention. This is ok by
   // aircraft orientation standards! Pass gyro rate as rad/s
 //  MadgwickQuaternionUpdate(ax, ay, az, gx*PI/180.0f, gy*PI/180.0f, gz*PI/180.0f,  my,  mx, mz);
-//  MahonyQuaternionUpdate(myIMU.ax, myIMU.ay, myIMU.az, myIMU.gx*DEG_TO_RAD,
-//                         myIMU.gy*DEG_TO_RAD, myIMU.gz*DEG_TO_RAD, myIMU.my,
-//                         myIMU.mx, myIMU.mz, myIMU.deltat);
+  MahonyQuaternionUpdate(myIMU.ax, myIMU.ay, myIMU.az, myIMU.gx*DEG_TO_RAD,
+                         myIMU.gy*DEG_TO_RAD, myIMU.gz*DEG_TO_RAD, myIMU.my,
+                         myIMU.mx, myIMU.mz, myIMU.deltat);
 
   if (!AHRS)
   {
@@ -385,11 +422,11 @@ void loop()
  ///     Serial.print(FilteredYaw, 2);
  ///     Serial.print(" ");
 
-      FilteredPitch = exponentialFilter(0.2, IMUFilter.getPitch(), FilteredPitch);
+      FilteredPitch = exponentialFilter(0.2, myIMU.pitch, FilteredPitch);
  ///     Serial.print(FilteredPitch, 2);
  ///     Serial.print(" ");
 
-      FilteredRoll = exponentialFilter(0.2, IMUFilter.getRoll(), FilteredRoll);
+      FilteredRoll = exponentialFilter(0.2, myIMU.roll, FilteredRoll);
  ///     Serial.println(FilteredRoll, 2);
    
       myIMU.count = millis();
@@ -474,15 +511,92 @@ void loop()
     int analogLX = ps2x.Analog(PSS_LX) - 128; //NOT USED!!!!
     int rR = sqrt(pow(analogRY, 2) + pow(analogRX, 2));
     int rL = sqrt(pow(analogLY, 2) + pow(analogLX, 2));   
-    
-//    Serial.print(analogLY);
-//    Serial.print(" ");
-//    Serial.print(analogLX);
-//    Serial.print(" ");
-//    Serial.print(analogRY);
-//    Serial.print(" ");
-//    Serial.println(analogRX);
 
+    //** Move forward
+    if(ps2x.Button(PSB_PAD_UP)) {
+      Serial.println("UP!");
+      if(cSpeed < 100) {
+        cSpeed = 20;
+        cSpeed+=5;
+        moveX(cSpeed, -cSpeed);
+        delay(500);
+      }
+    }
+    if (ps2x.ButtonReleased(PSB_PAD_UP)) {
+      cSpeed = 0;
+      moveX(cSpeed, cSpeed);
+      Serial.println("blh");
+    }
+
+    //** Move backwards
+    if(ps2x.Button(PSB_PAD_DOWN)) {
+      if(cSpeed < 100) {
+        cSpeed = 20;
+        cSpeed+=5;
+        moveX(-cSpeed, cSpeed);
+      }
+    }
+
+    if (ps2x.ButtonReleased(PSB_PAD_DOWN)) {
+      cSpeed = 0;
+      moveX(cSpeed, cSpeed);
+    }
+
+    //**Turn left
+    if(ps2x.Button(PSB_PAD_LEFT)) {
+      if(cSpeed < 100) {
+        cSpeed = 20;
+        cSpeed+=5;
+        moveX(0, -cSpeed);
+      }
+    }
+
+    if (ps2x.ButtonReleased(PSB_PAD_LEFT)) {
+      cSpeed = 0;
+      moveX(cSpeed, cSpeed);
+    }
+
+    //**Turn right
+    if(ps2x.Button(PSB_PAD_RIGHT)) {
+      if(cSpeed < 100) {
+        cSpeed = 20;
+        cSpeed+=5;
+        moveX(cSpeed, 0);
+      }
+    }
+
+    if (ps2x.ButtonReleased(PSB_PAD_RIGHT)) {
+      cSpeed = 0;
+      moveX(cSpeed, cSpeed);
+    }
+
+    //**Move up
+    if(ps2x.Button(PSB_L1)) {
+      if(cSpeed < 100) {
+        cSpeed = 20;
+        cSpeed+=5;
+        moveY(-cSpeed, -0.75*cSpeed);
+      }
+    }
+    if (ps2x.ButtonReleased(PSB_L1)) {
+      cSpeed = 0;
+      moveY(cSpeed, cSpeed);
+    }
+
+    //**Move down
+    if(ps2x.Button(PSB_L2)) {
+      if(cSpeed < 100) {
+        cSpeed = 20;
+        cSpeed+=5;
+        moveY(cSpeed, 0.75*cSpeed);
+      }
+    }
+    if (ps2x.ButtonReleased(PSB_L2)) {
+      cSpeed = 0;
+      moveY(cSpeed, cSpeed);
+    }
+
+    if (useJoystick) {
     int topSpeed = 75;
     // UP 
     if (analogLY > 25) {
@@ -563,47 +677,7 @@ void loop()
     }
 
     moveX(speedL,speedR);
-    
-    
-    
-//    Serial.print(rR);
-//    Serial.print(" ");
-//
-//        Serial.print(analogRX);
-//    Serial.print(" ");
-//
-//        Serial.print(analogRY);
-//    Serial.print(" ");
-//    
-//    Serial.print(speedL-deadValue);
-//    Serial.print(" ");
-//    
-//    Serial.println(speedR-deadValue);
-    
-
-//    //IMU Control
-//    if (ps2x.Button(PSB_R2)) {
-//      // set north to 30-33
-//      if (FilteredYaw < 20){
-//        motorRight.writeMicroseconds(maxSpeed50);
-//      }
-//      else if (FilteredYaw > 30) { //This was left
-//        motorRight.writeMicroseconds(maxSpeed50);
-//      }
-//
-//      else {
-//        motorRight.writeMicroseconds(minSpeed50);
-//        motorLeft.writeMicroseconds(minSpeed50);
-//        delay(1000);
-//        motorRight.writeMicroseconds(deadValue);
-//        motorLeft.writeMicroseconds(deadValue);
-//      }
-//    }
-//
-//    if (ps2x.ButtonReleased(PSB_R2)) {
-//      motorRight.writeMicroseconds(deadValue);
-//      motorLeft.writeMicroseconds(deadValue);
-//    }
+    } 
 
 // Test pressure sensor values
   if (ps2x.Button(PSB_R1)) {
@@ -641,6 +715,10 @@ void loop()
             counter++; 
     }
 
+    if (ps2x.Button(PSB_CIRCLE)) {
+      useJoystick = !useJoystick;
+    }
+
   }
 
  ///////////////////////////////////////PS2////////////////////////////////
@@ -654,7 +732,6 @@ void loop()
       state = 1;
     }
   }
-
 
   switch(state){
 
@@ -672,8 +749,8 @@ void loop()
 
     case 2:
     {
-      if(speed1 < 75) { //Increase forward speed to 100%
-        speed1++;
+      if(speed1 < 100) { //Increase forward speed to 100%
+        speed1+=10;
         moveX(speed1, -speed1);
       }
   
@@ -784,9 +861,10 @@ void loop()
 
     case 11: {
       // LAND
-    }    
+    }
+  }
 }
-}
+    
 
 
 
