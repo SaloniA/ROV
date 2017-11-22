@@ -891,19 +891,19 @@ float exponentialFilter(float w, float previous, float newValue) {
 }
 
 //PID functions
-double convertPressureToPID() {
+double convertPressureToPID(float value) {
   
 }
 
-double convertPressureFromPID() {
+float convertPressureFromPID(double value) {
   
 }
 
-double convertUSToPID() {
+double convertUSToPID(float value) {
   
 }
 
-double convertUSFromPID() {
+float convertUSFromPID(double value) {
   
 }
 
