@@ -4,17 +4,14 @@
  license: Beerware - Use this code however you'd like. If you
  find it useful you can buy me a beer some time.
  Modified by Brent Wilkins July 19, 2016
-
  Demonstrate basic MPU-9250 functionality including parameterizing the register
  addresses, initializing the sensor, getting properly scaled accelerometer,
  gyroscope, and magnetometer data out. Added display functions to allow display
  to on breadboard monitor. Addition of 9 DoF sensor fusion using open source
  Madgwick and Mahony filter algorithms. Sketch runs on the 3.3 V 8 MHz Pro Mini
  and the Teensy 3.1.
-
  SDA and SCL should have external pull-up resistors (to 3.3V).
  10k resistors are on the EMSENSR-9250 breakout board.
-
  Hardware setup:
  MPU9250 Breakout --------- Arduino
  VDD ---------------------- 3.3V
@@ -22,7 +19,6 @@
  SDA ----------------------- A4
  SCL ----------------------- A5
  GND ---------------------- GND
-
  Analog stick values
  RX: 110-145
  RY: 110-145
@@ -122,7 +118,7 @@ byte USaddr = 0;
 boolean error1 = 0;  //Create a bit to check for catch errors as needed.
 int dist;
 int speed1 = 0, speed2 = 0, speed3 = 0;
-int state = 0;
+int state = -1;
 int cSpeed = 0;
 boolean useJoystick = false;
 ///////////////////////////////PS2/////////////////////////////////
@@ -137,7 +133,7 @@ void setup()
   Wire.begin();
   // TWBR = 12;  // 400 kbit/sec I2C speed
   Serial.begin(38400);
-
+  Serial.println("test");
   // Set up the interrupt pin, its set as active high, push-pull
   pinMode(intPin, INPUT);
   digitalWrite(intPin, LOW);
@@ -148,7 +144,7 @@ void setup()
   byte c = myIMU.readByte(MPU9250_ADDRESS, WHO_AM_I_MPU9250);
 //  Serial.print("MPU9250 "); Serial.print("I AM "); Serial.print(c, HEX);
 //  Serial.print(" I should be "); Serial.println(0x71, HEX);
-
+  Serial.println("test1");
   if (c == 0x71) // WHO_AM_I should always be 0x68
   {
     myIMU.getAres();
@@ -224,7 +220,7 @@ void setup()
   }
 
   ////////////////PS2////////////////////////////////////////
-
+Serial.println("test2");
   motorLeft.attach(motorLeftPin, minValue, maxValue);
   motorRight.attach(motorRightPin, minValue, maxValue);
   motorUp.attach(motorUpPin, minValue, maxValue);
@@ -236,18 +232,21 @@ void setup()
   motorLeft.writeMicroseconds(deadValue);
   motorRight.writeMicroseconds(deadValue);
   delay (2000);
+Serial.println("test3");
 
   //Setup pins and settings for PS2 controller:  GamePad(clock, command, attention, data, Pressures?, Rumble?) check for error
   error = ps2x.config_gamepad(10, 11, 12, 13, false, false);
 
   //If you experience issues with the port motor value always being set to 0 despite the stick position, activate this code
   
-    leftStickY = ps2x.Analog(PSS_LY);
-    if (leftStickY == 0){
-    error = 1;
-    Serial.println("Controller thinks analog stick is off centre, restart program");
-    }
-  
+//    leftStickY = ps2x.Analog(PSS_LY);
+//    if (leftStickY == 0){
+//    error = 1;
+//    Serial.println("Controller thinks analog stick is off centre, restart program");
+//    }
+
+  Serial.println("test4");
+
 
   if (error == 0) {
     Serial.println("Found Controller, configured successful");
@@ -278,6 +277,7 @@ void setup()
   }
 
   ////////////////////////////PS2////////////////////////////
+Serial.println("test5");
 
   ////////////////////////////PRESSURE SENSOR///////////////
   //Retrieve calibration constants for conversion math.
@@ -286,14 +286,18 @@ void setup()
     
     pressure_baseline = sensor.getPressure(ADC_4096);
   ////////////////////////////PRESSURE SENSOR////////////////
-  
+  Serial.println("test6");
+
   // ULTRASONIC
   pinMode(pwPin1, INPUT);
   //ULTRASONIC
+  Serial.println("test7");
+
 }
 
 void loop()
 {
+  Serial.println("loop start");
   read_sensor();
   print_range();
   
@@ -364,23 +368,23 @@ void loop()
     // update LCD once per half-second independent of read rate
     if (myIMU.delt_t > 500)
     {
-
-// Define output variables from updated quaternion---these are Tait-Bryan
-// angles, commonly used in aircraft orientation. In this coordinate system,
-// the positive z-axis is down toward Earth. Yaw is the angle between Sensor
-// x-axis and Earth magnetic North (or true North if corrected for local
-// declination, looking down on the sensor positive yaw is counterclockwise.
-// Pitch is angle between sensor x-axis and Earth ground plane, toward the
-// Earth is positive, up toward the sky is negative. Roll is angle between
-// sensor y-axis and Earth ground plane, y-axis up is positive roll. These
-// arise from the definition of the homogeneous rotation matrix constructed
-// from quaternions. Tait-Bryan angles as well as Euler angles are
-// non-commutative; that is, the get the correct orientation the rotations
-// must be applied in the correct order which for this configuration is yaw,
-// pitch, and then roll.
-// For more see
-// http://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles
-// which has additional links.
+//
+//// Define output variables from updated quaternion---these are Tait-Bryan
+//// angles, commonly used in aircraft orientation. In this coordinate system,
+//// the positive z-axis is down toward Earth. Yaw is the angle between Sensor
+//// x-axis and Earth magnetic North (or true North if corrected for local
+//// declination, looking down on the sensor positive yaw is counterclockwise.
+//// Pitch is angle between sensor x-axis and Earth ground plane, toward the
+//// Earth is positive, up toward the sky is negative. Roll is angle between
+//// sensor y-axis and Earth ground plane, y-axis up is positive roll. These
+//// arise from the definition of the homogeneous rotation matrix constructed
+//// from quaternions. Tait-Bryan angles as well as Euler angles are
+//// non-commutative; that is, the get the correct orientation the rotations
+//// must be applied in the correct order which for this configuration is yaw,
+//// pitch, and then roll.
+//// For more see
+//// http://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles
+//// which has additional links.
       myIMU.yaw   = atan2(2.0f * (*(getQ()+1) * *(getQ()+2) + *getQ() *
                     *(getQ()+3)), *getQ() * *getQ() + *(getQ()+1) * *(getQ()+1)
                     - *(getQ()+2) * *(getQ()+2) - *(getQ()+3) * *(getQ()+3));
@@ -392,7 +396,7 @@ void loop()
       myIMU.pitch *= RAD_TO_DEG;
       myIMU.yaw   *= RAD_TO_DEG;
       // Declination of SparkFun Electronics (40°05'26.6"N 105°11'05.9"W) is
-      // 	8° 30' E  ± 0° 21' (or 8.5°) on 2016-07-19
+      //   8° 30' E  ± 0° 21' (or 8.5°) on 2016-07-19
       // - http://www.ngdc.noaa.gov/geomag-web/#declination
       myIMU.yaw   -= 8.5;
       myIMU.roll  *= RAD_TO_DEG;
@@ -496,10 +500,9 @@ void loop()
     if(ps2x.Button(PSB_PAD_UP)) {
       Serial.println("UP!");
       if(cSpeed < 100) {
-        cSpeed = 20;
-        cSpeed+=5;
+        cSpeed+=20;
         moveX(cSpeed, -cSpeed);
-        delay(500);
+        delay(100);
       }
     }
     if (ps2x.ButtonReleased(PSB_PAD_UP)) {
@@ -511,9 +514,9 @@ void loop()
     //** Move backwards
     if(ps2x.Button(PSB_PAD_DOWN)) {
       if(cSpeed < 100) {
-        cSpeed = 20;
-        cSpeed+=5;
+        cSpeed+=20;
         moveX(-cSpeed, cSpeed);
+        delay(100);
       }
     }
 
@@ -524,11 +527,8 @@ void loop()
 
     //**Turn left
     if(ps2x.Button(PSB_PAD_LEFT)) {
-      if(cSpeed < 100) {
-        cSpeed = 20;
-        cSpeed+=5;
-        moveX(0, -cSpeed);
-      }
+      cSpeed = 75;
+        moveX(-cSpeed, -cSpeed);
     }
 
     if (ps2x.ButtonReleased(PSB_PAD_LEFT)) {
@@ -538,11 +538,8 @@ void loop()
 
     //**Turn right
     if(ps2x.Button(PSB_PAD_RIGHT)) {
-      if(cSpeed < 100) {
-        cSpeed = 20;
-        cSpeed+=5;
-        moveX(cSpeed, 0);
-      }
+        cSpeed = 75;
+        moveX(cSpeed, cSpeed);
     }
 
     if (ps2x.ButtonReleased(PSB_PAD_RIGHT)) {
@@ -553,9 +550,9 @@ void loop()
     //**Move up
     if(ps2x.Button(PSB_L1)) {
       if(cSpeed < 100) {
-        cSpeed = 20;
-        cSpeed+=5;
+        cSpeed+=20;
         moveY(-cSpeed, -0.75*cSpeed);
+        delay(100);
       }
     }
     if (ps2x.ButtonReleased(PSB_L1)) {
@@ -566,9 +563,9 @@ void loop()
     //**Move down
     if(ps2x.Button(PSB_L2)) {
       if(cSpeed < 100) {
-        cSpeed = 20;
-        cSpeed+=5;
+        cSpeed+=20;
         moveY(cSpeed, 0.75*cSpeed);
+        delay(100);
       }
     }
     if (ps2x.ButtonReleased(PSB_L2)) {
@@ -577,6 +574,7 @@ void loop()
     }
 
     if (useJoystick) {
+      Serial.println("joystick used");
     int topSpeed = 100;
     // UP 
     if (analogLY > 18) {
@@ -697,6 +695,7 @@ void loop()
 
     if (ps2x.Button(PSB_CIRCLE)) {
       useJoystick = !useJoystick;
+      Serial.println(useJoystick);
     }
 
   }
@@ -706,25 +705,50 @@ void loop()
 
   
   if(ps2x.Button(PSB_START)) {
-      
+//    Serial.println("autonomous");
+//         moveX(-75, -75); // Turn left 90 degrees
+//        delay(1000);
+//        moveX(0,0);
+//
+//        delay(5000);
+//
+//        moveX(75,75); // Turn right 90 degrees
+//        delay(1000);
+//        moveX(0,0);
+//        state = -1;
+      //ACTUAL SEQUENCE START
+      if (state <= 0) {
+        state = 1;
+      }
+  
+      else {
+        state = -1;
+      }
+        
     }
     
   if (ps2x.ButtonReleased(PSB_START)) {
-    state = 1;
+
+      
   }
 
   switch(state){
 
     case 1:
     {
-      //AUTOPID
-      if (pressure_abs < 12000000){ //Move to bottom
+//      //AUTOPID
+//      if (pressure_abs < 12000000){ //Move to bottom
+//        moveY(75, 0.75*75);
+//      }
+//      else {
+//        moveY(0,0); 
+//        state++;
+//      }
         moveY(75, 0.75*75);
-      }
-      else {
-        moveY(0,0); 
+        delay(7000);
+        moveY(0,0);
         state++;
-      }
+        break;
     }
 
     case 2:
@@ -735,42 +759,53 @@ void loop()
       }
   
       else {
-        delay(2000); //Travel forward under first obstacle
+        moveY(50, 0.75*50);
+        delay(1000); //Travel forward under first obstacle
         state++;
       }
+      break;
     }
     
 
   case 3:
   {
-   //AUTOPID
-    if (pressure_abs > 3000){ //Move to top
+//   //AUTOPID
+//    if (pressure_abs > 3000){ //Move to top
+//      moveY(75, 0.75*75);
+//    }   
+//    else {
+//      moveY(0,0); 
+//      state++;
+//    }
+
       moveY(75, 0.75*75);
-    }   
-    else {
-      moveY(0,0); 
+      delay(7000);
+      moveY(0,0);
       state++;
-    }
- 
+      break;
   }
 
   case 4: {
      //IMU!!!!
-    moveX(0, -speed1*0.5); // Turn left 90 degrees
-    delay(500);
+     moveX(-75, -75); // Turn left 90 degrees
+    delay(1500);
+    moveX(0,0);
     moveX(speed1, -speed1); //move forward
     state++;
+    break;
   }
 
     case 5: {
 
     ///USE PID!!!!
-    if (mm > 500){ //Until you get to certain distance before wall
-      delay(500);
+    if (mm > 50){ //Until you get to certain distance before wall
+      delay(1000);
     }
     else {
+      moveX(0,0);
       state++;
     }
+    break;
   }
     
 
@@ -783,22 +818,43 @@ void loop()
     
     delay(3000); //Move forward across table
     state++;
+    break;
     }
 
     case 7:
     {
-       //AUTOPID
-    if (pressure_abs < 50696.17){ //Move back down to the middle
+//       //AUTOPID
+//    if (pressure_abs < 50696.17){ //Move back down to the middle
+//      moveY(75, 0.75*75);
+//    }
+//    else {
+//      moveY(0,0);
+//      state++;
+//    }
+
       moveY(75, 0.75*75);
-    }
-    else {
+      delay(3500);
       moveY(0,0);
       state++;
-    }
+      break;
 
     }
     
    case 8: {
+    //ASSUMING CORRECT ORIENTATION
+    if (mm > 2000) {// HOLE FOUND!!
+      moveX(speed1*0.5, -speed1*0.5);
+      delay(3000);
+      moveX(0, 0);
+      state++;
+      break;
+    }
+
+
+    else {
+    // Repeating sequence: turn left 90 degrees, if US distance is not huge
+    // turn right 90 degrees and move forward a small amount. 
+    
     // TURN AND AIM FOR MIDDLE OF OBSTACLE
     //IMU!!!!  
     moveX(speed1*0.5, 0); // Turn right 90 degrees
@@ -806,41 +862,28 @@ void loop()
     moveX(speed1, -speed1); //move forward
     
     delay(2000); //Move forward ideally to middle of pool
-    state++;
-   }
-    
 
-    case 9: {
-        // Repeating sequence: turn left 90 degrees, if US distance is not huge, turn right 90 degrees and move forward a small amount. 
      //IMU!!!!
     moveX(0, -speed1*0.5); // Turn left 90 degrees
     delay(500);
     moveX(speed1, -speed1); //move forward
-    state++;
-    }
-  
-
-    case 10: {
-      if (mm > 2000) {// HOLE FOUND!!
-      delay(3000);
-      moveX(0, 0);
-      state++;
-    }
-    else {
-      moveX(speed1*0.5, 0); // Turn right 90 degrees
-    delay(500);
-    moveX(speed1, -speed1); //move forward
-    delay(1000);
-    moveX(0, -speed1*0.5); // Turn left 90 degrees
-    delay(500);
-    }
-
-    }
-
-    case 11: {
-      // LAND
-    }
     
+    }
+    break;
+   }
+
+    case 9: {
+      state = -1;
+      moveX(0,0);
+      moveY(0,0);
+      break;
+    }
+
+    default: {
+      moveX(0,0);
+      moveY(0,0);
+      break;
+    }
     
   }
 }
