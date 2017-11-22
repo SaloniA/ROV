@@ -368,40 +368,43 @@ void loop()
     // update LCD once per half-second independent of read rate
     if (myIMU.delt_t > 500)
     {
-//
-//// Define output variables from updated quaternion---these are Tait-Bryan
-//// angles, commonly used in aircraft orientation. In this coordinate system,
-//// the positive z-axis is down toward Earth. Yaw is the angle between Sensor
-//// x-axis and Earth magnetic North (or true North if corrected for local
-//// declination, looking down on the sensor positive yaw is counterclockwise.
-//// Pitch is angle between sensor x-axis and Earth ground plane, toward the
-//// Earth is positive, up toward the sky is negative. Roll is angle between
-//// sensor y-axis and Earth ground plane, y-axis up is positive roll. These
-//// arise from the definition of the homogeneous rotation matrix constructed
-//// from quaternions. Tait-Bryan angles as well as Euler angles are
-//// non-commutative; that is, the get the correct orientation the rotations
-//// must be applied in the correct order which for this configuration is yaw,
-//// pitch, and then roll.
-//// For more see
-//// http://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles
-//// which has additional links.
-      myIMU.yaw   = atan2(2.0f * (*(getQ()+1) * *(getQ()+2) + *getQ() *
-                    *(getQ()+3)), *getQ() * *getQ() + *(getQ()+1) * *(getQ()+1)
-                    - *(getQ()+2) * *(getQ()+2) - *(getQ()+3) * *(getQ()+3));
-      myIMU.pitch = -asin(2.0f * (*(getQ()+1) * *(getQ()+3) - *getQ() *
-                    *(getQ()+2)));
-      myIMU.roll  = atan2(2.0f * (*getQ() * *(getQ()+1) + *(getQ()+2) *
-                    *(getQ()+3)), *getQ() * *getQ() - *(getQ()+1) * *(getQ()+1)
-                    - *(getQ()+2) * *(getQ()+2) + *(getQ()+3) * *(getQ()+3));
-      myIMU.pitch *= RAD_TO_DEG;
-      myIMU.yaw   *= RAD_TO_DEG;
-      // Declination of SparkFun Electronics (40°05'26.6"N 105°11'05.9"W) is
-      //   8° 30' E  ± 0° 21' (or 8.5°) on 2016-07-19
-      // - http://www.ngdc.noaa.gov/geomag-web/#declination
-      myIMU.yaw   -= 8.5;
-      myIMU.roll  *= RAD_TO_DEG;
 
-      FilteredYaw = exponentialFilter(0.2, myIMU.yaw, FilteredYaw);
+// Define output variables from updated quaternion---these are Tait-Bryan
+// angles, commonly used in aircraft orientation. In this coordinate system,
+// the positive z-axis is down toward Earth. Yaw is the angle between Sensor
+// x-axis and Earth magnetic North (or true North if corrected for local
+// declination, looking down on the sensor positive yaw is counterclockwise.
+// Pitch is angle between sensor x-axis and Earth ground plane, toward the
+// Earth is positive, up toward the sky is negative. Roll is angle between
+// sensor y-axis and Earth ground plane, y-axis up is positive roll. These
+// arise from the definition of the homogeneous rotation matrix constructed
+// from quaternions. Tait-Bryan angles as well as Euler angles are
+// non-commutative; that is, the get the correct orientation the rotations
+// must be applied in the correct order which for this configuration is yaw,
+// pitch, and then roll.
+// For more see
+// http://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles
+// which has additional links.
+//      myIMU.yaw   = atan2(2.0f * (*(getQ()+1) * *(getQ()+2) + *getQ() *
+//                    *(getQ()+3)), *getQ() * *getQ() + *(getQ()+1) * *(getQ()+1)
+//                    - *(getQ()+2) * *(getQ()+2) - *(getQ()+3) * *(getQ()+3));
+//      myIMU.pitch = -asin(2.0f * (*(getQ()+1) * *(getQ()+3) - *getQ() *
+//                    *(getQ()+2)));
+//      myIMU.roll  = atan2(2.0f * (*getQ() * *(getQ()+1) + *(getQ()+2) *
+//                    *(getQ()+3)), *getQ() * *getQ() - *(getQ()+1) * *(getQ()+1)
+//                    - *(getQ()+2) * *(getQ()+2) + *(getQ()+3) * *(getQ()+3));
+//      myIMU.pitch *= RAD_TO_DEG;
+//      myIMU.yaw   *= RAD_TO_DEG;
+//      // Declination of SparkFun Electronics (40°05'26.6"N 105°11'05.9"W) is
+//      // 	8° 30' E  ± 0° 21' (or 8.5°) on 2016-07-19
+//      // - http://www.ngdc.noaa.gov/geomag-web/#declination
+//      myIMU.yaw   -= 8.5;
+//      myIMU.roll  *= RAD_TO_DEG;
+
+      IMUFilter.updateIMU(myIMU.gx, myIMU.gy, myIMU.gz, myIMU.ax, myIMU.ay, myIMU.az);
+
+      FilteredYaw = exponentialFilter(0.1, (IMUFilter.getYaw()-180)*360, FilteredYaw);
+
  ///     Serial.print(FilteredYaw, 2);
  ///     Serial.print(" ");
 
@@ -702,7 +705,6 @@ void loop()
 
  ///////////////////////////////////////PS2////////////////////////////////
   // delay(1000); ???? pressure sensor, imu
-
   
   if(ps2x.Button(PSB_START)) {
 //    Serial.println("autonomous");
@@ -729,7 +731,6 @@ void loop()
     
   if (ps2x.ButtonReleased(PSB_START)) {
 
-      
   }
 
   switch(state){
@@ -817,6 +818,7 @@ void loop()
     moveX(speed1, -speed1); //move forward
     
     delay(3000); //Move forward across table
+    moveX(0,0);
     state++;
     break;
     }
@@ -847,7 +849,6 @@ void loop()
       delay(3000);
       moveX(0, 0);
       state++;
-      break;
     }
 
 
