@@ -31,13 +31,22 @@ int myLed  = 13;  // Set up pin 13 led for toggling
 MPU9250 myIMU;
 Madgwick IMUFilter;
 
+//PIDS
+//IMU
+double IMUSetpoint, IMUInput, IMUOutput, IMUKp=1, IMUKi=0, IMUKd=0;
+PID IMUPID(&IMUInput, &IMUOutput, &IMUSetpoint, IMUKp, IMUKi, IMUKd, DIRECT);
+
+//Pressure
+double PSetpoint, PInput, POutput, PKp=1, PKi=0, PKd=0;
+PID PPID(&PInput, &POutput, &PSetpoint, PKp, PKi, PKd, DIRECT);
+
+//Ultrasonic
+double USSetpoint, USInput, USOutput, USKp=1, USKi=0, USKd=0;
+PID USPID(&USInput, &USOutput, &USSetpoint, USKp, USKi, USKd, DIRECT);
+
 float FilteredYaw = 0;
 float FilteredPitch = 0;
 float FilteredRoll = 0;
-
-float exponentialFilter(float w, float previous, float newValue) {
-  return w*newValue + (1-w)*previous;
-}
 
 //////////////////////////////////PRESSURE SENSOR////////////////////
 // Begin class with selected address
@@ -254,6 +263,15 @@ void setup()
   // ULTRASONIC
   pinMode(pwPin1, INPUT);
   //ULTRASONIC
+  //PID
+  IMUPID.SetOutputLimits(-100, 100);
+  IMUPID.SetMode(AUTOMATIC);
+  
+  PPID.SetOutputLimits(-100, 100);
+  PPID.SetMode(AUTOMATIC);
+  
+  USPID.SetOutputLimits(-100, 100);
+  USPID.SetMode(AUTOMATIC);
 }
 
 void loop()
@@ -465,16 +483,16 @@ void loop()
 //    Serial.print(" ");
 //    Serial.println(analogRX);
 
-    int topSpeed = 100;
+    int topSpeed = 75;
     // UP 
-    if (analogLY > 18) {
-      int speedM = -topSpeed*analogLY/(128-18);
+    if (analogLY > 25) {
+      int speedM = -topSpeed*analogLY/128;
       moveY(speedM, 0.75*speedM);
     }
 
     //DOWN
-    else if (analogLY < -18) {
-      int speedM = -topSpeed*analogLY/(128-18);
+    else if (analogLY < -25) {
+      int speedM = -topSpeed*analogLY/128;
       moveY(speedM, 0.75*speedM);
     }
 
@@ -483,7 +501,7 @@ void loop()
     }
 
     //if out of the deadzone
-    if (rR > 18) {
+    if (rR > 25) {
       //forwards and backwards
       if (analogRX > -25 && analogRX < 25) {
         speedL = topSpeed*analogRY/128;
@@ -626,6 +644,7 @@ void loop()
   }
 
  ///////////////////////////////////////PS2////////////////////////////////
+  
   // delay(1000); ???? pressure sensor, imu
     
   if (ps2x.ButtonReleased(PSB_START)) {
@@ -653,7 +672,7 @@ void loop()
 
     case 2:
     {
-      if(speed1 < 100) { //Increase forward speed to 100%
+      if(speed1 < 75) { //Increase forward speed to 100%
         speed1++;
         moveX(speed1, -speed1);
       }
@@ -666,50 +685,47 @@ void loop()
     }
     
 
-  case 3:
-  {
-   //AUTOPID
-    if (pressure_abs > 3000){ //Move to top
-      moveY(75, 0.75*75);
-    }   
-    else {
-      moveY(0,0); 
+    case 3: {
+     //AUTOPID
+      if (pressure_abs > 3000){ //Move to top
+        moveY(75, 0.75*75);
+      }   
+      else {
+        moveY(0,0); 
+        state++;
+      }
+   
+    }
+
+    case 4: {
+       //IMU!!!!
+      moveX(0, -speed1*0.5); // Turn left 90 degrees
+      delay(500);
+      moveX(speed1, -speed1); //move forward
       state++;
     }
- 
-  }
-
-  case 4: {
-     //IMU!!!!
-    moveX(0, -speed1*0.5); // Turn left 90 degrees
-    delay(500);
-    moveX(speed1, -speed1); //move forward
-    state++;
-  }
 
     case 5: {
 
     ///USE PID!!!!
-    if (mm > 500){ //Until you get to certain distance before wall
-      delay(500);
+      if (mm > 500){ //Until you get to certain distance before wall
+        delay(500);
+      }
+      else {
+        moveX(0,0);
+        state++;
+      }
     }
-    else {
-      moveX(0,0);
-      state++;
-    }
-  }
-    
-
     
     case 6: {
     //IMU!!!!
-    moveX(speed1*0.5, 0); // Turn right 90 degrees
-    delay(500);
-    moveX(speed1, -speed1); //move forward
+      moveX(speed1*0.5, 0); // Turn right 90 degrees
+      delay(500);
+      moveX(speed1, -speed1); //move forward
     
-    delay(3000); //Move forward across table
-    moveX(0,0);
-    state++;
+      delay(3000); //Move forward across table
+      moveX(0,0);
+      state++;
     }
 
     case 7:
@@ -768,10 +784,7 @@ void loop()
 
     case 11: {
       // LAND
-    }
-    
-    
-    
+    }    
 }
 }
 
@@ -856,7 +869,8 @@ void print_range(){
   //Serial.print(" ");
   //Serial.println(inches);
 }
- 
+
+// Moving functions
 void moveY(int speedU, int speedD){
   int convertedSpeedU = speedU * (maxSpeed-deadValue)/100 + deadValue;
   int convertedSpeedD = speedD * (maxSpeed-deadValue)/100 + deadValue;
@@ -870,3 +884,26 @@ void moveX(int speedL, int speedR){
      motorLeft.writeMicroseconds(convertedSpeedL);
      motorRight.writeMicroseconds(convertedSpeedR);  
 }
+
+//Filters
+float exponentialFilter(float w, float previous, float newValue) {
+  return w*newValue + (1-w)*previous;
+}
+
+//PID functions
+double convertPressureToPID() {
+  
+}
+
+double convertPressureFromPID() {
+  
+}
+
+double convertUSToPID() {
+  
+}
+
+double convertUSFromPID() {
+  
+}
+
