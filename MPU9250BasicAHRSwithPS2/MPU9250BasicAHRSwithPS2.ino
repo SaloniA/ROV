@@ -51,13 +51,16 @@ int intPin = 12;  // These can be changed, 2 and 3 are the Arduinos ext int pins
 int myLed  = 13;  // Set up pin 13 led for toggling
 
 MPU9250 myIMU;
+Madgwick IMUFilter;
+
+//PIDS
+//IMU
+double IMUSetpoint, IMUInput, IMUOutput, IMUKp=1, IMUKi=0, IMUKd=0;
+PID IMUPID(&IMUInput, &IMUOutput, &IMUSetpoint, IMUKp, IMUKi, IMUKd, DIRECT);
+
 float FilteredYaw = 0;
 float FilteredPitch = 0;
 float FilteredRoll = 0;
-
-float exponentialFilter(float w, float previous, float newValue) {
-  return w*newValue + (1-w)*previous;
-}
 
 //////////////////////////////////PRESSURE SENSOR////////////////////
 // Begin class with selected address
@@ -174,42 +177,32 @@ void setup()
     myIMU.initAK8963(myIMU.magCalibration);
     // Initialize device for active mode read of magnetometer
 //    Serial.println("AK8963 initialized for active data mode....");
-    if (MAG_CALIBRATION) {
-      magcalMPU9250(myIMU.magBias, myIMU.magScale);
-      Serial.println("AK8963 mag biases (mG)"); Serial.println(myIMU.magBias[0]); Serial.println(myIMU.magBias[1]); Serial.println(myIMU.magBias[2]); 
-      Serial.println("AK8963 mag scale (mG)"); Serial.println(myIMU.magScale[0]); Serial.println(myIMU.magScale[1]); Serial.println(myIMU.magScale[2]); 
-      delay(2000); // add delay to see results before serial spew of data
-    }if(ps2x.Button(PSB_PAD_UP)) {
-      if(cSpeed < 100) {
-        cSpeed+=5;
-        moveX(cSpeed, -cSpeed);
-      }
-    }
-
-    if (ps2x.ButtonReleased(PSB_PAD_UP)) {
-      cSpeed = 0;
-      moveX(0, 0);
-    }
-    else {
-      //Values from previous calibration
-      myIMU.magBias[0] = -61.73;
-      myIMU.magBias[1] = 1260.07;
-      myIMU.magBias[2] = -1726.72;
-
-      myIMU.magScale[0] = 1.25;
-      myIMU.magScale[1] = 1.32;
-      myIMU.magScale[2] = 0.69;
-    }
-    if (SerialDebug)
-    {
-      Serial.println("Calibration values: ");
-      Serial.print("X-Axis sensitivity adjustment value ");
-      Serial.println(myIMU.magCalibration[0], 2);
-      Serial.print("Y-Axis sensitivity adjustment value ");
-      Serial.println(myIMU.magCalibration[1], 2);
-      Serial.print("Z-Axis sensitivity adjustment value ");
-      Serial.println(myIMU.magCalibration[2], 2);
-    }
+//    if (MAG_CALIBRATION) {
+//      magcalMPU9250(myIMU.magBias, myIMU.magScale);
+//      Serial.println("AK8963 mag biases (mG)"); Serial.println(myIMU.magBias[0]); Serial.println(myIMU.magBias[1]); Serial.println(myIMU.magBias[2]); 
+//      Serial.println("AK8963 mag scale (mG)"); Serial.println(myIMU.magScale[0]); Serial.println(myIMU.magScale[1]); Serial.println(myIMU.magScale[2]); 
+//      delay(2000); // add delay to see results before serial spew of data
+//    }
+//    else {
+//      //Values from previous calibration
+//      myIMU.magBias[0] = -61.73;
+//      myIMU.magBias[1] = 1260.07;
+//      myIMU.magBias[2] = -1726.72;
+//
+//      myIMU.magScale[0] = 1.25;
+//      myIMU.magScale[1] = 1.32;
+//      myIMU.magScale[2] = 0.69;
+//    }
+//    if (SerialDebug)
+//    {
+//      Serial.println("Calibration values: ");
+//      Serial.print("X-Axis sensitivity adjustment value ");
+//      Serial.println(myIMU.magCalibration[0], 2);
+//      Serial.print("Y-Axis sensitivity adjustment value ");
+//      Serial.println(myIMU.magCalibration[1], 2);
+//      Serial.print("Z-Axis sensitivity adjustment value ");
+//      Serial.println(myIMU.magCalibration[2], 2);
+//    }
 
   }
   else
@@ -218,6 +211,18 @@ void setup()
     Serial.println(c, HEX);
     float count = 0;
   }
+// ?????????????
+//  if(ps2x.Button(PSB_PAD_UP)) {
+//      if(cSpeed < 100) {
+//        cSpeed+=5;
+//        moveX(cSpeed, -cSpeed);
+//      }
+//    }
+//
+//    if (ps2x.ButtonReleased(PSB_PAD_UP)) {
+//      cSpeed = 0;
+//      moveX(0, 0);
+//    }
 
   ////////////////PS2////////////////////////////////////////
 Serial.println("test2");
@@ -293,6 +298,10 @@ Serial.println("test5");
   //ULTRASONIC
   Serial.println("test7");
 
+  //PID
+  IMUPID.SetOutputLimits(-100, 100);
+  IMUPID.SetMode(AUTOMATIC);
+
 }
 void(* resetFunc) (void) = 0; //declare reset function @ address 0
 void loop()
@@ -309,17 +318,17 @@ void loop()
 //
 //    // Now we'll calculate the accleration value into actual g's
 //    // This depends on scale being set
-//    myIMU.ax = (float)myIMU.accelCount[0]*myIMU.aRes; // - accelBias[0];
-//    myIMU.ay = (float)myIMU.accelCount[1]*myIMU.aRes; // - accelBias[1];
-//    myIMU.az = (float)myIMU.accelCount[2]*myIMU.aRes; // - accelBias[2];
-//
-//    myIMU.readGyroData(myIMU.gyroCount);  // Read the x/y/z adc values
-//
-//    // Calculate the gyro value into actual degrees per second
-//    // This depends on scale being set
-//    myIMU.gx = (float)myIMU.gyroCount[0]*myIMU.gRes;
-//    myIMU.gy = (float)myIMU.gyroCount[1]*myIMU.gRes;
-//    myIMU.gz = (float)myIMU.gyroCount[2]*myIMU.gRes;
+    myIMU.ax = (float)myIMU.accelCount[0]*myIMU.aRes; // - accelBias[0];
+    myIMU.ay = (float)myIMU.accelCount[1]*myIMU.aRes; // - accelBias[1];
+    myIMU.az = (float)myIMU.accelCount[2]*myIMU.aRes; // - accelBias[2];
+
+    myIMU.readGyroData(myIMU.gyroCount);  // Read the x/y/z adc values
+
+    // Calculate the gyro value into actual degrees per second
+    // This depends on scale being set
+    myIMU.gx = (float)myIMU.gyroCount[0]*myIMU.gRes;
+    myIMU.gy = (float)myIMU.gyroCount[1]*myIMU.gRes;
+    myIMU.gz = (float)myIMU.gyroCount[2]*myIMU.gRes;
 //
 //    myIMU.readMagData(myIMU.magCount);  // Read the x/y/z adc values
 //
@@ -351,23 +360,23 @@ void loop()
 //                         myIMU.gy*DEG_TO_RAD, myIMU.gz*DEG_TO_RAD, myIMU.my,
 //                         myIMU.mx, myIMU.mz, myIMU.deltat);
 //
-//  if (!AHRS)
-//  {
-//    myIMU.delt_t = millis() - myIMU.count;
-//    if (myIMU.delt_t > 500)
-//    {
-//      myIMU.count = millis();
-//      digitalWrite(myLed, !digitalRead(myLed));  // toggle led
-//    } // if (myIMU.delt_t > 500)
-//  } // if (!AHRS)
-//  else
-//  {
-//    // Serial print and/or display at 0.5 s rate independent of data rates
-//    myIMU.delt_t = millis() - myIMU.count;
-//
-//    // update LCD once per half-second independent of read rate
-//    if (myIMU.delt_t > 500)
-//    {
+  if (!AHRS)
+  {
+    myIMU.delt_t = millis() - myIMU.count;
+    if (myIMU.delt_t > 500)
+    {
+      myIMU.count = millis();
+      digitalWrite(myLed, !digitalRead(myLed));  // toggle led
+    } // if (myIMU.delt_t > 500)
+  } // if (!AHRS)
+  else
+  {
+    // Serial print and/or display at 0.5 s rate independent of data rates
+    myIMU.delt_t = millis() - myIMU.count;
+
+    // update LCD once per half-second independent of read rate
+    if (myIMU.delt_t > 500)
+    {
 //
 //// Define output variables from updated quaternion---these are Tait-Bryan
 //// angles, commonly used in aircraft orientation. In this coordinate system,
@@ -400,8 +409,9 @@ void loop()
 //      // - http://www.ngdc.noaa.gov/geomag-web/#declination
 //      myIMU.yaw   -= 8.5;
 //      myIMU.roll  *= RAD_TO_DEG;
-//
-//      FilteredYaw = exponentialFilter(0.2, myIMU.yaw, FilteredYaw);
+
+      IMUFilter.updateIMU(myIMU.gx, myIMU.gy, myIMU.gz, myIMU.ax, myIMU.ay, myIMU.az);
+      FilteredYaw = exponentialFilter(0.2, myIMU.yaw, FilteredYaw);
 // ///     Serial.print(FilteredYaw, 2);
 // ///     Serial.print(" ");
 //
@@ -701,9 +711,8 @@ void loop()
   }
 
  ///////////////////////////////////////PS2////////////////////////////////
-  // delay(1000); ???? pressure sensor, imu
 
-if(ps2x.Button(PSB_R2)) {
+if(ps2x.ButtonReleased(PSB_R2)) {
 //    Serial.println("autonomous");
 //         moveX(-75, -75); // Turn left 90 degrees
 //        delay(1000);
@@ -726,15 +735,11 @@ if(ps2x.Button(PSB_R2)) {
       Serial.println("set state to -1");
       moveX(0,0);
       moveY(0,0);
-       Serial.println("resetting");
-  resetFunc();  //call reset
+      Serial.println("resetting");
+      resetFunc();  //call reset
     }
         
-    }
-    
-  if (ps2x.ButtonReleased(PSB_R2)) {
-      
-  }
+}
 
   switch(state){
 
@@ -1031,4 +1036,8 @@ void moveX(int speedL, int speedR){
   int convertedSpeedR = speedR * (maxSpeed-deadValue)/100 + deadValue;
      motorLeft.writeMicroseconds(convertedSpeedL);
      motorRight.writeMicroseconds(convertedSpeedR);  
+}
+
+float exponentialFilter(float w, float previous, float newValue) {
+  return w*newValue + (1-w)*previous;
 }
