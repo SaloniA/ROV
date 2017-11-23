@@ -294,80 +294,80 @@ Serial.println("test5");
   Serial.println("test7");
 
 }
-
+void(* resetFunc) (void) = 0; //declare reset function @ address 0
 void loop()
 {
-  Serial.println("loop start");
+//  Serial.println("loop start");
   read_sensor();
-  print_range();
+//  print_range();
   
   // If intPin goes high, all data registers have new data
   // On interrupt, check if data ready interrupt
-  if (myIMU.readByte(MPU9250_ADDRESS, INT_STATUS) & 0x01)
-  {  
-    myIMU.readAccelData(myIMU.accelCount);  // Read the x/y/z adc values
-
-    // Now we'll calculate the accleration value into actual g's
-    // This depends on scale being set
-    myIMU.ax = (float)myIMU.accelCount[0]*myIMU.aRes; // - accelBias[0];
-    myIMU.ay = (float)myIMU.accelCount[1]*myIMU.aRes; // - accelBias[1];
-    myIMU.az = (float)myIMU.accelCount[2]*myIMU.aRes; // - accelBias[2];
-
-    myIMU.readGyroData(myIMU.gyroCount);  // Read the x/y/z adc values
-
-    // Calculate the gyro value into actual degrees per second
-    // This depends on scale being set
-    myIMU.gx = (float)myIMU.gyroCount[0]*myIMU.gRes;
-    myIMU.gy = (float)myIMU.gyroCount[1]*myIMU.gRes;
-    myIMU.gz = (float)myIMU.gyroCount[2]*myIMU.gRes;
-
-    myIMU.readMagData(myIMU.magCount);  // Read the x/y/z adc values
-
-    // Calculate the magnetometer values in milliGauss
-    // Include factory calibration per data sheet and user environmental
-    // corrections
-    // Get actual magnetometer value, this depends on scale being set
-    myIMU.mx = (float)myIMU.magCount[0]*myIMU.mRes*myIMU.magCalibration[0] -
-               myIMU.magBias[0];
-    myIMU.my = (float)myIMU.magCount[1]*myIMU.mRes*myIMU.magCalibration[1] -
-               myIMU.magBias[1];
-    myIMU.mz = (float)myIMU.magCount[2]*myIMU.mRes*myIMU.magCalibration[2] -
-               myIMU.magBias[2];
-  } // if (readByte(MPU9250_ADDRESS, INT_STATUS) & 0x01)
-
-  // Must be called before updating quaternions!
-  myIMU.updateTime();
-
-  // Sensors x (y)-axis of the accelerometer is aligned with the y (x)-axis of
-  // the magnetometer; the magnetometer z-axis (+ down) is opposite to z-axis
-  // (+ up) of accelerometer and gyro! We have to make some allowance for this
-  // orientationmismatch in feeding the output to the quaternion filter. For the
-  // MPU-9250, we have chosen a magnetic rotation that keeps the sensor forward
-  // along the x-axis just like in the LSM9DS0 sensor. This rotation can be
-  // modified to allow any convenient orientation convention. This is ok by
-  // aircraft orientation standards! Pass gyro rate as rad/s
-//  MadgwickQuaternionUpdate(ax, ay, az, gx*PI/180.0f, gy*PI/180.0f, gz*PI/180.0f,  my,  mx, mz);
-  MahonyQuaternionUpdate(myIMU.ax, myIMU.ay, myIMU.az, myIMU.gx*DEG_TO_RAD,
-                         myIMU.gy*DEG_TO_RAD, myIMU.gz*DEG_TO_RAD, myIMU.my,
-                         myIMU.mx, myIMU.mz, myIMU.deltat);
-
-  if (!AHRS)
-  {
-    myIMU.delt_t = millis() - myIMU.count;
-    if (myIMU.delt_t > 500)
-    {
-      myIMU.count = millis();
-      digitalWrite(myLed, !digitalRead(myLed));  // toggle led
-    } // if (myIMU.delt_t > 500)
-  } // if (!AHRS)
-  else
-  {
-    // Serial print and/or display at 0.5 s rate independent of data rates
-    myIMU.delt_t = millis() - myIMU.count;
-
-    // update LCD once per half-second independent of read rate
-    if (myIMU.delt_t > 500)
-    {
+//  if (myIMU.readByte(MPU9250_ADDRESS, INT_STATUS) & 0x01)
+//  {  
+//    myIMU.readAccelData(myIMU.accelCount);  // Read the x/y/z adc values
+//
+//    // Now we'll calculate the accleration value into actual g's
+//    // This depends on scale being set
+//    myIMU.ax = (float)myIMU.accelCount[0]*myIMU.aRes; // - accelBias[0];
+//    myIMU.ay = (float)myIMU.accelCount[1]*myIMU.aRes; // - accelBias[1];
+//    myIMU.az = (float)myIMU.accelCount[2]*myIMU.aRes; // - accelBias[2];
+//
+//    myIMU.readGyroData(myIMU.gyroCount);  // Read the x/y/z adc values
+//
+//    // Calculate the gyro value into actual degrees per second
+//    // This depends on scale being set
+//    myIMU.gx = (float)myIMU.gyroCount[0]*myIMU.gRes;
+//    myIMU.gy = (float)myIMU.gyroCount[1]*myIMU.gRes;
+//    myIMU.gz = (float)myIMU.gyroCount[2]*myIMU.gRes;
+//
+//    myIMU.readMagData(myIMU.magCount);  // Read the x/y/z adc values
+//
+//    // Calculate the magnetometer values in milliGauss
+//    // Include factory calibration per data sheet and user environmental
+//    // corrections
+//    // Get actual magnetometer value, this depends on scale being set
+//    myIMU.mx = (float)myIMU.magCount[0]*myIMU.mRes*myIMU.magCalibration[0] -
+//               myIMU.magBias[0];
+//    myIMU.my = (float)myIMU.magCount[1]*myIMU.mRes*myIMU.magCalibration[1] -
+//               myIMU.magBias[1];
+//    myIMU.mz = (float)myIMU.magCount[2]*myIMU.mRes*myIMU.magCalibration[2] -
+//               myIMU.magBias[2];
+//  } // if (readByte(MPU9250_ADDRESS, INT_STATUS) & 0x01)
+//
+//  // Must be called before updating quaternions!
+//  myIMU.updateTime();
+//
+//  // Sensors x (y)-axis of the accelerometer is aligned with the y (x)-axis of
+//  // the magnetometer; the magnetometer z-axis (+ down) is opposite to z-axis
+//  // (+ up) of accelerometer and gyro! We have to make some allowance for this
+//  // orientationmismatch in feeding the output to the quaternion filter. For the
+//  // MPU-9250, we have chosen a magnetic rotation that keeps the sensor forward
+//  // along the x-axis just like in the LSM9DS0 sensor. This rotation can be
+//  // modified to allow any convenient orientation convention. This is ok by
+//  // aircraft orientation standards! Pass gyro rate as rad/s
+////  MadgwickQuaternionUpdate(ax, ay, az, gx*PI/180.0f, gy*PI/180.0f, gz*PI/180.0f,  my,  mx, mz);
+//  MahonyQuaternionUpdate(myIMU.ax, myIMU.ay, myIMU.az, myIMU.gx*DEG_TO_RAD,
+//                         myIMU.gy*DEG_TO_RAD, myIMU.gz*DEG_TO_RAD, myIMU.my,
+//                         myIMU.mx, myIMU.mz, myIMU.deltat);
+//
+//  if (!AHRS)
+//  {
+//    myIMU.delt_t = millis() - myIMU.count;
+//    if (myIMU.delt_t > 500)
+//    {
+//      myIMU.count = millis();
+//      digitalWrite(myLed, !digitalRead(myLed));  // toggle led
+//    } // if (myIMU.delt_t > 500)
+//  } // if (!AHRS)
+//  else
+//  {
+//    // Serial print and/or display at 0.5 s rate independent of data rates
+//    myIMU.delt_t = millis() - myIMU.count;
+//
+//    // update LCD once per half-second independent of read rate
+//    if (myIMU.delt_t > 500)
+//    {
 //
 //// Define output variables from updated quaternion---these are Tait-Bryan
 //// angles, commonly used in aircraft orientation. In this coordinate system,
@@ -385,38 +385,38 @@ void loop()
 //// For more see
 //// http://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles
 //// which has additional links.
-      myIMU.yaw   = atan2(2.0f * (*(getQ()+1) * *(getQ()+2) + *getQ() *
-                    *(getQ()+3)), *getQ() * *getQ() + *(getQ()+1) * *(getQ()+1)
-                    - *(getQ()+2) * *(getQ()+2) - *(getQ()+3) * *(getQ()+3));
-      myIMU.pitch = -asin(2.0f * (*(getQ()+1) * *(getQ()+3) - *getQ() *
-                    *(getQ()+2)));
-      myIMU.roll  = atan2(2.0f * (*getQ() * *(getQ()+1) + *(getQ()+2) *
-                    *(getQ()+3)), *getQ() * *getQ() - *(getQ()+1) * *(getQ()+1)
-                    - *(getQ()+2) * *(getQ()+2) + *(getQ()+3) * *(getQ()+3));
-      myIMU.pitch *= RAD_TO_DEG;
-      myIMU.yaw   *= RAD_TO_DEG;
-      // Declination of SparkFun Electronics (40°05'26.6"N 105°11'05.9"W) is
-      //   8° 30' E  ± 0° 21' (or 8.5°) on 2016-07-19
-      // - http://www.ngdc.noaa.gov/geomag-web/#declination
-      myIMU.yaw   -= 8.5;
-      myIMU.roll  *= RAD_TO_DEG;
-
-      FilteredYaw = exponentialFilter(0.2, myIMU.yaw, FilteredYaw);
- ///     Serial.print(FilteredYaw, 2);
- ///     Serial.print(" ");
-
-      FilteredPitch = exponentialFilter(0.2, myIMU.pitch, FilteredPitch);
- ///     Serial.print(FilteredPitch, 2);
- ///     Serial.print(" ");
-
-      FilteredRoll = exponentialFilter(0.2, myIMU.roll, FilteredRoll);
- ///     Serial.println(FilteredRoll, 2);
-   
-      myIMU.count = millis();
-      myIMU.sumCount = 0;
-      myIMU.sum = 0;
-    } // if (myIMU.delt_t > 500)
-  } // if (AHRS)
+//      myIMU.yaw   = atan2(2.0f * (*(getQ()+1) * *(getQ()+2) + *getQ() *
+//                    *(getQ()+3)), *getQ() * *getQ() + *(getQ()+1) * *(getQ()+1)
+//                    - *(getQ()+2) * *(getQ()+2) - *(getQ()+3) * *(getQ()+3));
+//      myIMU.pitch = -asin(2.0f * (*(getQ()+1) * *(getQ()+3) - *getQ() *
+//                    *(getQ()+2)));
+//      myIMU.roll  = atan2(2.0f * (*getQ() * *(getQ()+1) + *(getQ()+2) *
+//                    *(getQ()+3)), *getQ() * *getQ() - *(getQ()+1) * *(getQ()+1)
+//                    - *(getQ()+2) * *(getQ()+2) + *(getQ()+3) * *(getQ()+3));
+//      myIMU.pitch *= RAD_TO_DEG;
+//      myIMU.yaw   *= RAD_TO_DEG;
+//      // Declination of SparkFun Electronics (40°05'26.6"N 105°11'05.9"W) is
+//      //   8° 30' E  ± 0° 21' (or 8.5°) on 2016-07-19
+//      // - http://www.ngdc.noaa.gov/geomag-web/#declination
+//      myIMU.yaw   -= 8.5;
+//      myIMU.roll  *= RAD_TO_DEG;
+//
+//      FilteredYaw = exponentialFilter(0.2, myIMU.yaw, FilteredYaw);
+// ///     Serial.print(FilteredYaw, 2);
+// ///     Serial.print(" ");
+//
+//      FilteredPitch = exponentialFilter(0.2, myIMU.pitch, FilteredPitch);
+// ///     Serial.print(FilteredPitch, 2);
+// ///     Serial.print(" ");
+//
+//      FilteredRoll = exponentialFilter(0.2, myIMU.roll, FilteredRoll);
+// ///     Serial.println(FilteredRoll, 2);
+//   
+//      myIMU.count = millis();
+//      myIMU.sumCount = 0;
+//      myIMU.sum = 0;
+//    } // if (myIMU.delt_t > 500)
+//  } // if (AHRS)
 
 ///////////////////////////////////PRESSURE SENSOR/////////////////////////
 // To measure to higher degrees of precision use the following sensor settings:
@@ -504,7 +504,6 @@ void loop()
         moveX(cSpeed, -cSpeed);
         delay(100);
       }
-      moveX(75, -75);
     }
     if (ps2x.ButtonReleased(PSB_PAD_UP)) {
       cSpeed = 0;
@@ -574,89 +573,89 @@ void loop()
       moveY(cSpeed, cSpeed);
     }
 
-    if (useJoystick) {
-      Serial.println("joystick used");
-    int topSpeed = 100;
-    // UP 
-    if (analogLY > 18) {
-      int speedM = -topSpeed*analogLY/(128-18);
-      moveY(speedM, 0.75*speedM);
-    }
-
-    //DOWN
-    else if (analogLY < -18) {
-      int speedM = -topSpeed*analogLY/(128-18);
-      moveY(speedM, 0.75*speedM);
-    }
-
-    else {
-      moveY(0, 0);
-    }
-
-    //if out of the deadzone
-    if (rR > 18) {
-      //forwards and backwards
-      if (analogRX > -25 && analogRX < 25) {
-        speedL = topSpeed*analogRY/128;
-        speedR = -topSpeed*analogRY/128;
-      }
-      //if turning right
-      else if (analogRX > 25) {
-        //if going forwards
-        if (analogRY > 0 ) {
-          //if reached where it would spin the other motor backwards
-          if (rR - analogRX < 0) {
-            speedL = topSpeed*rR/128;;
-            speedR = 0;
-          } else {
-            speedL = topSpeed*rR/128;
-            speedR = -topSpeed*(rR - analogRX)/128;
-          }
-          //if going backwards
-        } else {
-          //if reached where it would spin the other motor backwards
-          if (rR - analogRX < 0) {
-            speedL = -topSpeed*rR/128;
-            speedR = 0;
-          } else {
-            speedL = -topSpeed*rR/128;
-            speedR = topSpeed*(rR - analogRX)/128;
-          }
-        }
-      }
-      //if turning left
-      else {
-        //going forward
-        if (analogRY > 0 ) {
-          //if reached where it would spin the other motor backwards
-          if (rR + analogRX < 0) {
-            speedL = 0;
-            speedR = -topSpeed*rR/128;
-          } else {
-            speedL = topSpeed*(rR + analogRX)/128;
-            speedR = -topSpeed*rR/128;;
-          }
-        } 
-        //going backwards
-        else {
-          //if reached where it would spin the other motor backwards
-          if (rR + analogRX < 0) {
-            speedL = 0;
-            speedR = topSpeed*rR/128;
-          } else {
-            speedL = -topSpeed*(rR + analogRX)/128;
-            speedR = topSpeed*rR/128;
-          }
-        }
-      }
-    }
-    else {
-      speedL = 0;
-      speedR = 0;
-    }
-
-    moveX(speedL,speedR);
-    } 
+//    if (useJoystick) {
+//      Serial.println("joystick used");
+//    int topSpeed = 100;
+//    // UP 
+//    if (analogLY > 18) {
+//      int speedM = -topSpeed*analogLY/(128-18);
+//      moveY(speedM, 0.75*speedM);
+//    }
+//
+//    //DOWN
+//    else if (analogLY < -18) {
+//      int speedM = -topSpeed*analogLY/(128-18);
+//      moveY(speedM, 0.75*speedM);
+//    }
+//
+//    else {
+//      moveY(0, 0);
+//    }
+//
+//    //if out of the deadzone
+//    if (rR > 18) {
+//      //forwards and backwards
+//      if (analogRX > -25 && analogRX < 25) {
+//        speedL = topSpeed*analogRY/128;
+//        speedR = -topSpeed*analogRY/128;
+//      }
+//      //if turning right
+//      else if (analogRX > 25) {
+//        //if going forwards
+//        if (analogRY > 0 ) {
+//          //if reached where it would spin the other motor backwards
+//          if (rR - analogRX < 0) {
+//            speedL = topSpeed*rR/128;;
+//            speedR = 0;
+//          } else {
+//            speedL = topSpeed*rR/128;
+//            speedR = -topSpeed*(rR - analogRX)/128;
+//          }
+//          //if going backwards
+//        } else {
+//          //if reached where it would spin the other motor backwards
+//          if (rR - analogRX < 0) {
+//            speedL = -topSpeed*rR/128;
+//            speedR = 0;
+//          } else {
+//            speedL = -topSpeed*rR/128;
+//            speedR = topSpeed*(rR - analogRX)/128;
+//          }
+//        }
+//      }
+//      //if turning left
+//      else {
+//        //going forward
+//        if (analogRY > 0 ) {
+//          //if reached where it would spin the other motor backwards
+//          if (rR + analogRX < 0) {
+//            speedL = 0;
+//            speedR = -topSpeed*rR/128;
+//          } else {
+//            speedL = topSpeed*(rR + analogRX)/128;
+//            speedR = -topSpeed*rR/128;;
+//          }
+//        } 
+//        //going backwards
+//        else {
+//          //if reached where it would spin the other motor backwards
+//          if (rR + analogRX < 0) {
+//            speedL = 0;
+//            speedR = topSpeed*rR/128;
+//          } else {
+//            speedL = -topSpeed*(rR + analogRX)/128;
+//            speedR = topSpeed*rR/128;
+//          }
+//        }
+//      }
+//    }
+//    else {
+//      speedL = 0;
+//      speedR = 0;
+//    }
+//
+//    moveX(speedL,speedR);
+//    } 
 
 // Test pressure sensor values
   if (ps2x.Button(PSB_R1)) {
@@ -694,18 +693,17 @@ void loop()
             counter++; 
     }
 
-    if (ps2x.Button(PSB_CIRCLE)) {
-      useJoystick = !useJoystick;
-      Serial.println(useJoystick);
-    }
+//    if (ps2x.Button(PSB_CIRCLE)) {
+//      useJoystick = !useJoystick;
+//      Serial.println(useJoystick);
+//    }
 
   }
 
  ///////////////////////////////////////PS2////////////////////////////////
   // delay(1000); ???? pressure sensor, imu
 
-  
-  if(ps2x.Button(PSB_START)) {
+if(ps2x.Button(PSB_R2)) {
 //    Serial.println("autonomous");
 //         moveX(-75, -75); // Turn left 90 degrees
 //        delay(1000);
@@ -717,19 +715,24 @@ void loop()
 //        delay(1000);
 //        moveX(0,0);
 //        state = -1;
-      //ACTUAL SEQUENCE START
-      if (state <= 0) {
-        state = 1;
-      }
-  
-      else {
-        state = -1;
-      }
+    //ACTUAL SEQUENCE START
+    if (state <= 0) {
+      state = 1;
+      Serial.println("set state to 1");
+    }
+
+    else {
+      state = -1;
+      Serial.println("set state to -1");
+      moveX(0,0);
+      moveY(0,0);
+       Serial.println("resetting");
+  resetFunc();  //call reset
+    }
         
     }
     
-  if (ps2x.ButtonReleased(PSB_START)) {
-
+  if (ps2x.ButtonReleased(PSB_R2)) {
       
   }
 
@@ -745,24 +748,33 @@ void loop()
 //        moveY(0,0); 
 //        state++;
 //      }
+        Serial.println("Start state 1");
         moveY(75, 0.75*75);
         delay(7000);
         moveY(0,0);
         state++;
+        Serial.println("End state 1");        
         break;
     }
 
     case 2:
     {
+              Serial.println("Start state 2");
       if(speed1 < 100) { //Increase forward speed to 100%
         speed1+=10;
         moveX(speed1, -speed1);
+       Serial.println(speed1);
+
       }
   
       else {
-        moveY(50, 0.75*50);
+        moveY(50, 0.75*50);//Force down movement while passing first obstacle
         delay(1000); //Travel forward under first obstacle
+        moveY(0,0);
+        moveX(0,0);
         state++;
+        Serial.println("End state 2");
+
       }
       break;
     }
@@ -778,26 +790,42 @@ void loop()
 //      moveY(0,0); 
 //      state++;
 //    }
-
-      moveY(75, 0.75*75);
+Serial.println("Start state 3");
+      moveY(-75, -0.75*75); //Move back up
       delay(7000);
       moveY(0,0);
       state++;
+      speed1 = 0;
+      Serial.println("End state 3");
       break;
   }
 
-  case 4: {
+ case 4: {
+  Serial.println("Start state 4");
      //IMU!!!!
      moveX(-75, -75); // Turn left 90 degrees
-    delay(1500);
+    delay(1000);
     moveX(0,0);
-    moveX(speed1, -speed1); //move forward
     state++;
+    Serial.println("End state 4");  
+ }
+
+ case 5: {
+       Serial.println("Start state 5");  
+    if(speed1 < 100) { //Increase forward speed to 100%
+       speed1+=10;
+       moveX(speed1, -speed1);
+    }
+    else {
+     state++;   
+     Serial.println("End state 5");  
+    }
+
     break;
   }
 
-    case 5: {
-
+     case 6: {
+Serial.println("Start state 6");
     ///USE PID!!!!
     if (mm > 50){ //Until you get to certain distance before wall
       delay(1000);
@@ -805,24 +833,38 @@ void loop()
     else {
       moveX(0,0);
       state++;
+      Serial.println("End state 6");
     }
     break;
   }
-    
 
-    
-    case 6: {
+    case 7: {
+      Serial.println("Start state 7");
     //IMU!!!!
-    moveX(speed1*0.5, 0); // Turn right 90 degrees
-    delay(500);
-    moveX(speed1, -speed1); //move forward
-    
-    delay(3000); //Move forward across table
+    moveX(75, 75); // Turn right 90 degrees
+    delay(1000);
+    moveX(0,0);
     state++;
+    speed1 = 0;
+    Serial.println("End state 7");  
     break;
     }
 
-    case 7:
+    case 8: {
+           Serial.println("Start state 8");  
+    if(speed1 < 100) { //Increase forward speed to 100%
+       speed1+=10;
+       moveX(speed1, -speed1);
+    }
+    else {
+    delay(3000); //Move forward across table
+    moveX(0,0);
+    state++;
+    Serial.println("End state 8");
+    }
+    break;
+    }
+    case 9:
     {
 //       //AUTOPID
 //    if (pressure_abs < 50696.17){ //Move back down to the middle
@@ -832,22 +874,25 @@ void loop()
 //      moveY(0,0);
 //      state++;
 //    }
-
+Serial.println("Start state 9");
       moveY(75, 0.75*75);
       delay(3500);
       moveY(0,0);
       state++;
+      Serial.println("End state 9");
       break;
 
     }
     
-   case 8: {
+   case 10: {
+         Serial.println("Start state 10");  
     //ASSUMING CORRECT ORIENTATION
     if (mm > 2000) {// HOLE FOUND!!
-      moveX(speed1*0.5, -speed1*0.5);
+      moveX(75, -75);
       delay(3000);
       moveX(0, 0);
       state++;
+           Serial.println("End state 10");  
       break;
     }
 
@@ -858,35 +903,37 @@ void loop()
     
     // TURN AND AIM FOR MIDDLE OF OBSTACLE
     //IMU!!!!  
-    moveX(speed1*0.5, 0); // Turn right 90 degrees
-    delay(500);
-    moveX(speed1, -speed1); //move forward
+    moveX(75, 75); // Turn right 90 degrees
+    delay(1000);
+    moveX(0,0);
+    moveX(75, -75); //move forward
     
-    delay(2000); //Move forward ideally to middle of pool
-
+    delay(1000); //Move forward ideally to middle of pool
+    moveX(0,0);
      //IMU!!!!
-    moveX(0, -speed1*0.5); // Turn left 90 degrees
-    delay(500);
-    moveX(speed1, -speed1); //move forward
+    moveX(-75, -75); // Turn left 90 degrees
+    delay(1000);
+    moveX(0,0);
+    moveX(75, -75); //move forward
     
     }
     break;
    }
-
-    case 9: {
+    case 11: {
+           Serial.println("Start state 11");  
       state = -1;
       moveX(0,0);
       moveY(0,0);
+           Serial.println("End state 11");  
       break;
     }
-
-    default: {
-      moveX(0,0);
-      moveY(0,0);
-      break;
-    }
+default: {
+  // Nothing
+  break;
+}
     
   }
+
 }
     
 
