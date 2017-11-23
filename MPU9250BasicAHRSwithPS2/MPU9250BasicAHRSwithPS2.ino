@@ -411,7 +411,7 @@ void loop()
 //      myIMU.roll  *= RAD_TO_DEG;
 
       IMUFilter.updateIMU(myIMU.gx, myIMU.gy, myIMU.gz, myIMU.ax, myIMU.ay, myIMU.az);
-      FilteredYaw = exponentialFilter(0.2, myIMU.yaw, FilteredYaw);
+      FilteredYaw = exponentialFilter(0.2, (IMUFilter.getYaw()-180)*360, FilteredYaw);
 // ///     Serial.print(FilteredYaw, 2);
 // ///     Serial.print(" ");
 //
