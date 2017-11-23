@@ -702,6 +702,18 @@ void loop()
   }
 
  ///////////////////////////////////////PS2////////////////////////////////
+if(ps2x.Button(PSB_R2)) {
+  if (state > 0) {
+      state = -2; //forced reset
+      Serial.println("set state to -1");
+      moveX(0,0);
+      moveY(0,0);
+      Serial.println("resetting");
+      //resetFunc();  //call reset
+  } else if (state == -1) {
+    state = 0; 
+  }
+}
 
 if(ps2x.ButtonReleased(PSB_R2)) {
 //    Serial.println("autonomous");
@@ -716,19 +728,20 @@ if(ps2x.ButtonReleased(PSB_R2)) {
 //        moveX(0,0);
 //        state = -1;
     //ACTUAL SEQUENCE START
-    if (state <= 0) {
+    if (state == 0) {
       state = 1;
       Serial.println("set state to 1");
-    }
-
-    else {
+    } else if (state == -2) {
       state = -1;
-      Serial.println("set state to -1");
-      moveX(0,0);
-      moveY(0,0);
-      Serial.println("resetting");
-      resetFunc();  //call reset
     }
+//    else {
+//      state = -1;
+//      Serial.println("set state to -1");
+//      moveX(0,0);
+//      moveY(0,0);
+//      Serial.println("resetting");
+//      //resetFunc();  //call reset
+//    }
         
 }
 
