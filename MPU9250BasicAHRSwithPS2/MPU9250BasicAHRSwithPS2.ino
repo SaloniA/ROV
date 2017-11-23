@@ -142,6 +142,9 @@ const int pwPin1 = 6;
 long USsensor, mm, inches;
 //ULTRASONIC
 
+//Counters to check if in steady state
+int PressureCheck=0, YawCheck=0, USCheck=0;
+
 void setup()
 {
   Wire.begin();
@@ -677,7 +680,7 @@ void loop()
     }
 
     moveX(speedL,speedR);
-    } 
+  } 
 
 // Test pressure sensor values
   if (ps2x.Button(PSB_R1)) {
@@ -715,7 +718,7 @@ void loop()
             counter++; 
     }
 
-    if (ps2x.Button(PSB_CIRCLE)) {
+    if (ps2x.ButtonReleased(PSB_CIRCLE)) {
       useJoystick = !useJoystick;
     }
 
@@ -735,11 +738,12 @@ void loop()
 
   switch(state){
 
-    case 1:
-    {
+    case 1: {
       //AUTOPID
       if (pressure_abs < 12000000){ //Move to bottom
-        moveY(75, 0.75*75);
+        //moveY(75, 0.75*75);
+        PSetpoint = convertPressureToPID(12000000);
+        state = 101;
       }
       else {
         moveY(0,0); 
@@ -747,8 +751,24 @@ void loop()
       }
     }
 
-    case 2:
-    {
+    case 101: {
+      PInput = convertPressureToPID(pressure_abs);
+      PPID.Compute();
+      if (POutput < 10 && POutput > -10) {
+        moveY(0,0);
+        PressureCheck++;
+        if (PressureCheck > 2) {
+           PressureCheck = 0;
+           state = 2;
+        }
+      }
+      else {
+        PressureCheck = 0;
+        moveY(POutput, 0.75*POutput);
+      }
+    }
+    
+    case 2: {
       if(speed1 < 100) { //Increase forward speed to 100%
         speed1+=10;
         moveX(speed1, -speed1);
@@ -765,69 +785,183 @@ void loop()
     case 3: {
      //AUTOPID
       if (pressure_abs > 3000){ //Move to top
-        moveY(75, 0.75*75);
+        //moveY(-75, -0.75*75);
+        PSetpoint = convertPressureToPID(3000);
+        state = 103;
       }   
       else {
-        moveY(0,0); 
+        moveY(0,0);
+        IMUSetpoint = FilteredYaw + 90; 
         state++;
       }
    
     }
 
+    case 103: {
+      PInput = convertPressureToPID(pressure_abs);
+      PPID.Compute();
+      if (POutput < 10 && POutput > -10) {
+        moveY(0,0);
+        PressureCheck++;
+        if (PressureCheck > 2) {
+          PressureCheck = 0;
+          IMUSetpoint = FilteredYaw + 90;
+          state = 4;
+        }
+      }
+      else {
+        PressureCheck = 0;
+        moveY(POutput, 0.75*POutput);
+      }
+    }
+    
     case 4: {
+      IMUInput = FilteredYaw;
+      IMUPID.Compute();
+      if (IMUOutput < 10 && IMUOutput > -10) {
+        moveX(0,0);
+        YawCheck++;
+        if (YawCheck > 2) {
+          YawCheck = 0;
+          state = 5;
+        }
+      } 
+      else {
+        YawCheck = 0;
+        moveX(0, -IMUOutput); // Turn left 90 degrees
+      }
+      //Older Code
        //IMU!!!!
-      moveX(0, -speed1*0.5); // Turn left 90 degrees
-      delay(500);
-      moveX(speed1, -speed1); //move forward
-      state++;
+//      moveX(0, -speed1*0.5); // Turn left 90 degrees
+//      delay(500);
+//      moveX(speed1, -speed1); //move forward
+//      state++;
     }
 
     case 5: {
-
+    
     ///USE PID!!!!
       if (mm > 500){ //Until you get to certain distance before wall
-        delay(500);
+        USSetpoint = convertUSToPID(500);
+        state = 105;
       }
       else {
         moveX(0,0);
         state++;
       }
+      //OLDER CODE
+//      if (mm > 500){ //Until you get to certain distance before wall
+//        delay(500);
+//      }
+//      else {
+//        moveX(0,0);
+//        state++;
+//      }
+    }
+    case 105 : {
+      USInput = convertUSToPID(mm);
+      USPID.Compute();
+      if (USOutput < 10 && USOutput > -10) {
+        moveX(0,0);
+        USCheck++;
+        if (USCheck > 2) {
+          USCheck = 0;
+          IMUSetpoint = FilteredYaw - 90;
+          state = 6;
+        }
+      } 
+      else {
+        USCheck = 0;
+        moveX(USOutput, -USOutput); // Go Straight.
+      }
     }
     
     case 6: {
+      IMUInput = FilteredYaw;
+      IMUPID.Compute();
+      if (IMUOutput < 10 && IMUOutput > -10) {
+        moveX(0,0);
+        YawCheck++;
+        if (YawCheck > 2) {
+          YawCheck = 0;
+          moveX(speed1, -speed1); //move forward    
+          delay(3000); //Move forward across table
+          state = 7;
+        }
+      } 
+      else {
+        YawCheck = 0;
+        moveX(-IMUOutput, 0); // Turn right 90 degrees
+      }
+      
     //IMU!!!!
-      moveX(speed1*0.5, 0); // Turn right 90 degrees
-      delay(500);
-      moveX(speed1, -speed1); //move forward
-    
-      delay(3000); //Move forward across table
-      moveX(0,0);
-      state++;
+//      moveX(speed1*0.5, 0); // Turn right 90 degrees
+//      delay(500);
+//      moveX(speed1, -speed1); //move forward
+//    
+//      delay(3000); //Move forward across table
+//      moveX(0,0);
+//      state++;
     }
 
     case 7:
     {
-       //AUTOPID
-      if (pressure_abs < 50696.17){ //Move back down to the middle
-        moveY(75, 0.75*75);
-      }
+      if (pressure_abs < 50696.17){ //Move to top
+        PSetpoint = convertPressureToPID(50696.17);
+        state = 107;
+      }   
       else {
-        moveY(0,0);
+        moveY(0,0); 
         state++;
       }
+      
+//       //AUTOPID
+//      if (pressure_abs < 50696.17){ //Move back down to the middle
+//        moveY(75, 0.75*75);
+//      }
+//      else {
+//        moveY(0,0);
+//        state++;
+//      }
 
+    }
+
+    case 107 : {
+      PInput = convertPressureToPID(pressure_abs);
+      PPID.Compute();
+      if (POutput < 10 && POutput > -10) {
+        moveY(0,0);
+        PressureCheck++;
+        if (PressureCheck > 2) {
+           PressureCheck = 0;
+           state = 8;
+        }
+      }
+      else {
+        PressureCheck = 0;
+        moveY(POutput, 0.75*POutput);
+      }
     }
     
    case 8: {
-    // TURN AND AIM FOR MIDDLE OF OBSTACLE
-    //IMU!!!!  
-    moveX(speed1*0.5, 0); // Turn right 90 degrees
-    delay(500);
-    moveX(speed1, -speed1); //move forward
+    if (mm > 2000) {
+      moveX(speed1,-speed1);
+      delay(3000);
+      state = 11;
+    } else {
+      IMUSetpoint = FilteredYaw - 90;
+      state = 9;
+    }
     
-    delay(2000); //Move forward ideally to middle of pool
-    moveX(0,0);
-    state++;
+//    // TURN AND AIM FOR MIDDLE OF OBSTACLE
+//    //IMU!!!!  
+//    moveX(speed1*0.5, 0); // Turn right 90 degrees
+//    delay(500);
+//    moveX(speed1, -speed1); //move forward
+//    
+//    delay(2000); //Move forward ideally to middle of pool
+//    moveX(0,0);
+//    state++;
    }
     
 
@@ -973,15 +1107,7 @@ double convertPressureToPID(float value) {
   
 }
 
-float convertPressureFromPID(double value) {
-  
-}
-
 double convertUSToPID(float value) {
-  
-}
-
-float convertUSFromPID(double value) {
   
 }
 
