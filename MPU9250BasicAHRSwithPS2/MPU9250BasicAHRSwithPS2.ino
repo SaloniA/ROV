@@ -301,6 +301,7 @@ Serial.println("test5");
   //PID
   IMUPID.SetOutputLimits(-100, 100);
   IMUPID.SetMode(AUTOMATIC);
+  IMUSetpoint = FilteredYaw + 90;
 
 }
 void(* resetFunc) (void) = 0; //declare reset function @ address 0
@@ -360,23 +361,23 @@ void loop()
 //                         myIMU.gy*DEG_TO_RAD, myIMU.gz*DEG_TO_RAD, myIMU.my,
 //                         myIMU.mx, myIMU.mz, myIMU.deltat);
 //
-  if (!AHRS)
-  {
-    myIMU.delt_t = millis() - myIMU.count;
-    if (myIMU.delt_t > 500)
-    {
-      myIMU.count = millis();
-      digitalWrite(myLed, !digitalRead(myLed));  // toggle led
-    } // if (myIMU.delt_t > 500)
-  } // if (!AHRS)
-  else
-  {
-    // Serial print and/or display at 0.5 s rate independent of data rates
-    myIMU.delt_t = millis() - myIMU.count;
+//  if (!AHRS)
+//  {
+//    myIMU.delt_t = millis() - myIMU.count;
+//    if (myIMU.delt_t > 500)
+//    {
+//      myIMU.count = millis();
+//      digitalWrite(myLed, !digitalRead(myLed));  // toggle led
+//    } // if (myIMU.delt_t > 500)
+//  } // if (!AHRS)
+//  else
+//  {
+//    // Serial print and/or display at 0.5 s rate independent of data rates
+//    myIMU.delt_t = millis() - myIMU.count;
 
     // update LCD once per half-second independent of read rate
-    if (myIMU.delt_t > 500)
-    {
+//    if (myIMU.delt_t > 500)
+//    {
 //
 //// Define output variables from updated quaternion---these are Tait-Bryan
 //// angles, commonly used in aircraft orientation. In this coordinate system,
@@ -412,6 +413,17 @@ void loop()
 
       IMUFilter.updateIMU(myIMU.gx, myIMU.gy, myIMU.gz, myIMU.ax, myIMU.ay, myIMU.az);
       FilteredYaw = exponentialFilter(0.2, (IMUFilter.getYaw()-180)*360, FilteredYaw);
+
+      //TESTING
+      IMUInput = FilteredYaw;
+      IMUPID.Compute();
+      if (IMUOutput < 10 && IMUOutput > -10) {
+        moveX(0,0);
+      } 
+      else {
+        moveX(0, -IMUOutput); // Turn left 90 degrees
+      }
+      
 // ///     Serial.print(FilteredYaw, 2);
 // ///     Serial.print(" ");
 //
