@@ -299,11 +299,10 @@ Serial.println("test5");
   Serial.println("test7");
 
   //PID
-  IMUPID.SetOutputLimits(-100, 100);
+  IMUPID.SetOutputLimits(-50, 50);
   IMUPID.SetMode(AUTOMATIC);
-  IMUSetpoint = FilteredYaw + 90;
-
 }
+
 void(* resetFunc) (void) = 0; //declare reset function @ address 0
 void loop()
 {
@@ -374,10 +373,16 @@ void loop()
 //  {
 //    // Serial print and/or display at 0.5 s rate independent of data rates
 //    myIMU.delt_t = millis() - myIMU.count;
-
-    // update LCD once per half-second independent of read rate
+//
+//    // update LCD once per half-second independent of read rate
 //    if (myIMU.delt_t > 500)
 //    {
+//      myIMU.count = millis();
+//      myIMU.sumCount = 0;
+//      myIMU.sum = 0;
+//    } // if (myIMU.delt_t > 500)
+//  } // if (AHRS)
+//
 //
 //// Define output variables from updated quaternion---these are Tait-Bryan
 //// angles, commonly used in aircraft orientation. In this coordinate system,
@@ -412,34 +417,8 @@ void loop()
 //      myIMU.roll  *= RAD_TO_DEG;
 
       IMUFilter.updateIMU(myIMU.gx, myIMU.gy, myIMU.gz, myIMU.ax, myIMU.ay, myIMU.az);
-      FilteredYaw = exponentialFilter(0.2, (IMUFilter.getYaw()-180)*360, FilteredYaw);
-
-      //TESTING
-      IMUInput = FilteredYaw;
-      IMUPID.Compute();
-      if (IMUOutput < 10 && IMUOutput > -10) {
-        moveX(0,0);
-      } 
-      else {
-        moveX(0, -IMUOutput); // Turn left 90 degrees
-      }
+      FilteredYaw = exponentialFilter(0.1, (IMUFilter.getYaw()-180)*360, FilteredYaw);     
       
-// ///     Serial.print(FilteredYaw, 2);
-// ///     Serial.print(" ");
-//
-//      FilteredPitch = exponentialFilter(0.2, myIMU.pitch, FilteredPitch);
-// ///     Serial.print(FilteredPitch, 2);
-// ///     Serial.print(" ");
-//
-//      FilteredRoll = exponentialFilter(0.2, myIMU.roll, FilteredRoll);
-// ///     Serial.println(FilteredRoll, 2);
-//   
-//      myIMU.count = millis();
-//      myIMU.sumCount = 0;
-//      myIMU.sum = 0;
-//    } // if (myIMU.delt_t > 500)
-//  } // if (AHRS)
-
 ///////////////////////////////////PRESSURE SENSOR/////////////////////////
 // To measure to higher degrees of precision use the following sensor settings:
   // ADC_256 
@@ -1053,3 +1032,17 @@ void moveX(int speedL, int speedR){
 float exponentialFilter(float w, float previous, float newValue) {
   return w*newValue + (1-w)*previous;
 }
+
+bool IMUTurn() {
+      IMUInput = FilteredYaw;
+      IMUPID.Compute();
+      if (IMUOutput < 10 && IMUOutput > -10) {
+        moveX(0,0);
+        return true;
+      } 
+      else {
+         moveX(-IMUOutput, -IMUOutput);
+        return false;
+      }
+}
+
