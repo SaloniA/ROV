@@ -504,6 +504,7 @@ void loop()
         moveX(cSpeed, -cSpeed);
         delay(100);
       }
+      moveX(75, -75);
     }
     if (ps2x.ButtonReleased(PSB_PAD_UP)) {
       cSpeed = 0;
